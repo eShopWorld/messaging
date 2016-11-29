@@ -1,13 +1,10 @@
-﻿namespace DevOpsFlex.Messaging.Tests
-{
-    using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Xunit;
 
-    [TestClass]
-    public class MessengerTest
+// ReSharper disable once CheckNamespace
+public class MessengerTest
+{
+    [Fact]
+    public void TestMethod1()
     {
-        [TestMethod]
-        public void TestMethod1()
-        {
-        }
     }
 }

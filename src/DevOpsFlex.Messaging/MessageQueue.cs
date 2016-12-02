@@ -1,34 +1,44 @@
 ﻿namespace DevOpsFlex.Messaging
 {
     using System;
+    using System.Collections.Generic;
     using System.Threading;
     using System.Threading.Tasks;
     using JetBrains.Annotations;
-    using Microsoft.ServiceBus;
     using Microsoft.ServiceBus.Messaging;
 
     internal sealed class MessageQueue<T> : MessageQueue
         where T : IMessage
     {
-        internal int BatchSize = 10;
-
         internal readonly IObserver<IMessage> MessagesIn;
         internal readonly IDisposable OutSubscription;
 
-        internal readonly Timer ReadTimer;
+        internal int BatchSize = 10;
+        internal Timer ReadTimer;
 
         public MessageQueue([NotNull]string connectionString, [NotNull]IObserver<IMessage> messagesIn, [NotNull]IObservable<IMessage> messagesOut)
-            :base(connectionString, typeof(T))
+            : base(connectionString, typeof(T))
         {
             MessagesIn = messagesIn;
 
             OutSubscription = messagesOut.Subscribe(async m => await Send(m));
+        }
+
+        internal void StartReading()
+        {
+            if (ReadTimer != null) return;
 
             ReadTimer = new Timer(
                 async _ => await Read(_),
                 null,
                 TimeSpan.FromSeconds(1),
                 TimeSpan.FromSeconds(1)); // TODO: CREATE A DYNAMIC POOLING HEURISTIC
+        }
+
+        internal void StopReading()
+        {
+            ReadTimer.Dispose();
+            ReadTimer = null;
         }
 
         internal async Task Send([NotNull]IMessage message)
@@ -42,10 +52,16 @@
 
             foreach (var message in messages)
             {
-                MessagesIn.OnNext(message.GetBody<T>());
+                var messageBody = message.GetBody<T>();
+
+                BMessages.Add(messageBody, message);
+                MessagesIn.OnNext(messageBody);
             }
         }
 
+        /// <summary>
+        /// Provides a mechanism for releasing resources.
+        /// </summary>
         public override void Dispose()
         {
             OutSubscription?.Dispose();
@@ -57,7 +73,9 @@
 
     internal class MessageQueue : IDisposable
     {
-        internal readonly QueueClient QueueClient;
+        internal static readonly IDictionary<IMessage, BrokeredMessage> BMessages = new Dictionary<IMessage, BrokeredMessage>();
+
+        protected readonly QueueClient QueueClient;
 
         internal MessageQueue([NotNull]string connectionString, [NotNull]Type messageType)
         {
@@ -68,21 +86,17 @@ $@"You can't create queues for the type {messageType.FullName} because the full 
 I suggest you reduce the size of the namespace '{messageType.Namespace}'.");
             }
 
-            QueueClient = CreateIfNotExists(connectionString, messageType.FullName).Result; // unwrapp
-        }
-
-        [NotNull] internal async Task<QueueClient> CreateIfNotExists([NotNull]string connectionString, [NotNull]string entityPath)
-        {
-            var nsm = NamespaceManager.CreateFromConnectionString(connectionString);
-
-            if (!await nsm.QueueExistsAsync(entityPath))
+            if (messageType.FullName.ToLower() == ErrorQueue.ErrorQueueName) // Error queue clash
             {
-                await nsm.CreateQueueAsync(entityPath); // TODO: MISSING QUEUE CREATION PROPERTIES
+                throw new InvalidOperationException($"Are you seriously creating a message named {ErrorQueue.ErrorQueueName} ??? Seriously ???");
             }
 
-            return QueueClient.CreateFromConnectionString(connectionString, entityPath, ReceiveMode.PeekLock);
+            QueueClient = QueueCllientExtensions.CreateIfNotExists(connectionString, messageType.FullName).Result; // unwrapp
         }
 
+        /// <summary>
+        /// Provides a mechanism for releasing resources.
+        /// </summary>
         public virtual void Dispose()
         {
             try

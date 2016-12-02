@@ -6,6 +6,7 @@
     using System.Reactive.Linq;
     using System.Reactive.Subjects;
     using System.Threading.Tasks;
+    using System.Transactions;
     using JetBrains.Annotations;
 
     public class Messenger : IMessenger, IDisposable
@@ -74,6 +75,7 @@
         internal static async Task Lock(IMessage message)
         {
             // TODO: MISSING VALIDATION
+            // TODO: MISSING INSTRUMENTATION
 
             await Task.Yield(); // TODO
         }
@@ -81,6 +83,7 @@
         internal static async Task Complete(IMessage message)
         {
             // TODO: MISSING VALIDATION
+            // TODO: MISSING INSTRUMENTATION
 
             await MessageQueue.BMessages[message].CompleteAsync();
         }
@@ -88,6 +91,7 @@
         internal static async Task Abandon(IMessage message)
         {
             // TODO: MISSING VALIDATION
+            // TODO: MISSING INSTRUMENTATION
 
             await MessageQueue.BMessages[message].AbandonAsync();
         }
@@ -95,9 +99,14 @@
         internal static async Task Error(IMessage message)
         {
             // TODO: MISSING VALIDATION
+            // TODO: MISSING INSTRUMENTATION
+            using (var scope = new TransactionScope())
+            {
+                ErrorMessages.OnNext(message);
+                await MessageQueue.BMessages[message].CompleteAsync();
 
-            ErrorMessages.OnNext(message);
-            await MessageQueue.BMessages[message].CompleteAsync();
+                scope.Complete();
+            }
         }
 
 
@@ -107,6 +116,8 @@
         public void Dispose()
         {
             // TODO: This guy needs to do a lot of work!
+
+            _errorQueue.Dispose();
         }
     }
 }

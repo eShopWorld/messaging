@@ -9,11 +9,12 @@
     {
         internal const string ErrorQueueName = "error";
         internal readonly QueueClient QueueClient;
+        private readonly IDisposable _errorSub;
 
         internal ErrorQueue([NotNull]string connectionString, [NotNull]IObservable<IMessage> messagesIn)
         {
             QueueClient = QueueCllientExtensions.CreateIfNotExists(connectionString, "error").Result; // unwrapp
-            messagesIn.Subscribe(async m => await SendToError(m));
+            _errorSub = messagesIn.Subscribe(async m => await SendToError(m));
         }
 
         internal async Task SendToError(IMessage message)
@@ -26,10 +27,9 @@
         /// </summary>
         public void Dispose()
         {
-            try
-            {
-                QueueClient.Close();
-            }
+            _errorSub?.Dispose();
+
+            try { QueueClient.Close(); }
             catch { QueueClient.Abort(); }
         }
     }

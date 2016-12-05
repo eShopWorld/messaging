@@ -5,6 +5,7 @@
     using System.Reactive;
     using System.Reactive.Linq;
     using System.Reactive.Subjects;
+    using System.Threading;
     using System.Threading.Tasks;
     using System.Transactions;
     using JetBrains.Annotations;
@@ -74,39 +75,44 @@
         }
         internal static async Task Lock(IMessage message)
         {
-            // TODO: MISSING VALIDATION
-            // TODO: MISSING INSTRUMENTATION
+            var bMessage = MessageQueue.BrokeredMessages[message];
+            await bMessage.RenewLockAsync();
 
-            await Task.Yield(); // TODO
+            MessageQueue.LockTimers.Add(
+                message,
+                new Timer(
+                    _ =>
+                    {
+                        bMessage.RenewLockAsync();
+                    },
+                    null,
+                    TimeSpan.FromSeconds(MessageQueue.LockTickInSeconds),
+                    TimeSpan.FromSeconds(MessageQueue.LockTickInSeconds)));
         }
 
         internal static async Task Complete(IMessage message)
         {
-            // TODO: MISSING VALIDATION
-            // TODO: MISSING INSTRUMENTATION
-
-            await MessageQueue.BMessages[message].CompleteAsync();
+            await MessageQueue.BrokeredMessages[message].CompleteAsync();
+            MessageQueue.Release(message);
         }
 
         internal static async Task Abandon(IMessage message)
         {
-            // TODO: MISSING VALIDATION
-            // TODO: MISSING INSTRUMENTATION
-
-            await MessageQueue.BMessages[message].AbandonAsync();
+            await MessageQueue.BrokeredMessages[message].AbandonAsync();
+            MessageQueue.Release(message);
         }
 
         internal static async Task Error(IMessage message)
         {
-            // TODO: MISSING VALIDATION
-            // TODO: MISSING INSTRUMENTATION
             using (var scope = new TransactionScope())
             {
                 ErrorMessages.OnNext(message);
-                await MessageQueue.BMessages[message].CompleteAsync();
+                await MessageQueue.BrokeredMessages[message].CompleteAsync();
 
                 scope.Complete();
             }
+
+            MessageQueue.Release(message);
         }
 
 

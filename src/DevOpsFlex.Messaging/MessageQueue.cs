@@ -13,7 +13,6 @@
         internal readonly IObserver<IMessage> MessagesIn;
         internal readonly IDisposable OutSubscription;
 
-        internal int BatchSize = 10;
         internal Timer ReadTimer;
 
         public MessageQueue([NotNull]string connectionString, [NotNull]IObserver<IMessage> messagesIn, [NotNull]IObservable<IMessage> messagesOut)
@@ -54,7 +53,7 @@
             {
                 var messageBody = message.GetBody<T>();
 
-                BMessages.Add(messageBody, message);
+                BrokeredMessages.Add(messageBody, message);
                 MessagesIn.OnNext(messageBody);
             }
         }
@@ -73,8 +72,13 @@
 
     internal class MessageQueue : IDisposable
     {
-        internal static readonly IDictionary<IMessage, BrokeredMessage> BMessages = new Dictionary<IMessage, BrokeredMessage>();
+        internal const int LockInSeconds = 60;
+        internal static int LockTickInSeconds = (int)Math.Floor(LockInSeconds * 0.6);
 
+        internal static readonly IDictionary<IMessage, BrokeredMessage> BrokeredMessages = new Dictionary<IMessage, BrokeredMessage>();
+        internal static readonly IDictionary<IMessage, Timer> LockTimers = new Dictionary<IMessage, Timer>();
+
+        internal int BatchSize = 10;
         protected readonly QueueClient QueueClient;
 
         internal MessageQueue([NotNull]string connectionString, [NotNull]Type messageType)
@@ -88,10 +92,23 @@ I suggest you reduce the size of the namespace '{messageType.Namespace}'.");
 
             if (messageType.FullName.ToLower() == ErrorQueue.ErrorQueueName) // Error queue clash
             {
-                throw new InvalidOperationException($"Are you seriously creating a message named {ErrorQueue.ErrorQueueName} ??? Seriously ???");
+                throw new InvalidOperationException($"Are you seriously creating a message named {ErrorQueue.ErrorQueueName} ???");
             }
 
             QueueClient = QueueCllientExtensions.CreateIfNotExists(connectionString, messageType.FullName).Result; // unwrapp
+        }
+
+        internal static void Release(IMessage message)
+        {
+            BrokeredMessages[message]?.Dispose();
+            BrokeredMessages.Remove(message);
+
+            // check for a lock renewal timer and release it if it exists
+            if (LockTimers.ContainsKey(message))
+            {
+                LockTimers[message]?.Dispose();
+                LockTimers.Remove(message);
+            }
         }
 
         /// <summary>

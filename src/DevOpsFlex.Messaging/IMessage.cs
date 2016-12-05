@@ -18,11 +18,9 @@
         /// Ensures that from this point forward you always have a valid lock on the message.
         /// Used at the start of any message handling.
         /// </summary>
-        /// <typeparam name="T">The message <see cref="System.Type"/>.</typeparam>
         /// <param name="message">The message that we want to LOCK.</param>
         /// <returns>The async <see cref="Task"/> void wrapper.</returns>
-        public static async Task Lock<T>(this T message)
-            where T : IMessage
+        public static async Task Lock(IMessage message)
         {
             await Messenger.Lock(message);
         }
@@ -30,11 +28,9 @@
         /// <summary>
         /// Completes the receive operation of a message and indicates that the message should be marked as processed and deleted.
         /// </summary>
-        /// <typeparam name="T">The message <see cref="System.Type"/>.</typeparam>
         /// <param name="message">The message that we want to COMPLETE.</param>
         /// <returns>The async <see cref="Task"/> void wrapper.</returns>
-        public static async Task Complete<T>(this T message)
-            where T : IMessage
+        public static async Task Complete(IMessage message)
         {
             await Messenger.Complete(message);
         }
@@ -42,11 +38,9 @@
         /// <summary>
         /// Abandons a message by abandoning the lock on the peek-locked brokered message.
         /// </summary>
-        /// <typeparam name="T">The message <see cref="System.Type"/>.</typeparam>
         /// <param name="message">The message that we want to ABANDON.</param>
         /// <returns>The async <see cref="Task"/> void wrapper.</returns>
-        public static async Task Abandon<T>(this T message)
-            where T : IMessage
+        public static async Task Abandon(IMessage message)
         {
             await Messenger.Abandon(message);
         }
@@ -54,11 +48,9 @@
         /// <summary>
         /// Moves this message to the error queue, marking it for replayability when possible.
         /// </summary>
-        /// <typeparam name="T">The message <see cref="System.Type"/>.</typeparam>
         /// <param name="message">The message that we want to ERROR.</param>
         /// <returns>The async <see cref="Task"/> void wrapper.</returns>
-        public static async Task Error<T>(this T message)
-            where T : IMessage
+        public static async Task Error(IMessage message)
         {
             await Messenger.Error(message);
         }

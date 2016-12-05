@@ -7,6 +7,7 @@
     /// A generic object comparerer that would only use object's reference, 
     /// ignoring any <see cref="System.IEquatable{T}"/> or <see cref="object.Equals(object)"/>  overrides.
     /// </summary>
+    /// <typeparam name="T"></typeparam>
     public class ObjectReferenceEqualityComparer<T> : EqualityComparer<T>
         where T : class
     {
@@ -20,8 +21,8 @@
         /// <summary>
         /// Determines whether the specified objects are equal.
         /// </summary>
-        /// <param name="x">The first object of type <paramref name="T" /> to compare.</param>
-        /// <param name="y">The second object of type <paramref name="T" /> to compare.</param>
+        /// <param name="x">The first object of type <typeparamref name="T" /> to compare.</param>
+        /// <param name="y">The second object of type <typeparamref name="T" /> to compare.</param>
         /// <returns>true if the specified objects are equal; otherwise, false.</returns>
         public override bool Equals(T x, T y)
         {

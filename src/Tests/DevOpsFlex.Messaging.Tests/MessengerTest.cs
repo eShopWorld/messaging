@@ -7,22 +7,20 @@ using Xunit;
 // ReSharper disable once CheckNamespace
 public class MessengerTest
 {
-    [Fact, Trait("Category", "Integration")]
-    public void TestMethod1()
+    [Collection("Integration")]
+    public class Integration
     {
-        IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString());
-        //msn.Send(new NewCatalogEntry
-        //{
-        //    Name = "David",
-        //    Price = 1.0f,
-        //});
-
-        msn.Receive<TestMessage>(m =>
+        [Fact, Trait("Category", "Integration")]
+        public void TestMethod1()
         {
-            
-        });
+            // MAKE SURE WE PERFORM THE INITIAL SCORCH - extend namespace manager?
 
-        Task.Delay(TimeSpan.FromSeconds(30)).Wait();
+            IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString());
+
+            // TAP INTO READS OUTSIDE THE MESSENGER - extend queue client?
+
+            Task.Delay(TimeSpan.FromSeconds(30)).Wait();
+        }
     }
 }
 
@@ -31,6 +29,8 @@ namespace DevOpsFlex.Messaging.Tests
     public class TestMessage : IMessage
     {
         public string Name { get; set; }
+
+        public string Stuff { get; set; }
 
         public float Price { get; set; }
     }

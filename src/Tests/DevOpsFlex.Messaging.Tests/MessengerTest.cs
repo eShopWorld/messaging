@@ -1,24 +1,23 @@
 ﻿using System;
-using System.Configuration;
-using System.Reactive.Linq;
 using System.Threading.Tasks;
 using DevOpsFlex.Messaging;
+using DevOpsFlex.Messaging.Tests;
 using Xunit;
 
 // ReSharper disable once CheckNamespace
 public class MessengerTest
 {
-    [Fact]
+    [Fact, Trait("Category", "Integration")]
     public void TestMethod1()
     {
-        IMessenger msn = new Messenger(ConfigurationManager.AppSettings["sb:connection"]);
+        IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString());
         //msn.Send(new NewCatalogEntry
         //{
         //    Name = "David",
         //    Price = 1.0f,
         //});
 
-        msn.Receive<NewCatalogEntry>(m =>
+        msn.Receive<TestMessage>(m =>
         {
             
         });
@@ -27,9 +26,12 @@ public class MessengerTest
     }
 }
 
-public class NewCatalogEntry : IMessage
+namespace DevOpsFlex.Messaging.Tests
 {
-    public string Name { get; set; }
+    public class TestMessage : IMessage
+    {
+        public string Name { get; set; }
 
-    public float Price { get; set; }
+        public float Price { get; set; }
+    }
 }

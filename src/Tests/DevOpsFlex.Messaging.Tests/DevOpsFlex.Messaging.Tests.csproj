@@ -120,6 +120,10 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="Lorem\EnumerableExtensions.cs" />
+    <Compile Include="Lorem\Lorem.cs" />
+    <Compile Include="Lorem\NumberExtensions.cs" />
+    <Compile Include="Lorem\StringExtensions.cs" />
     <Compile Include="MessengerTest.cs" />
     <Compile Include="NamespaceHelper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

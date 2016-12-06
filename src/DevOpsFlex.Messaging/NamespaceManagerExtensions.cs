@@ -10,7 +10,7 @@
     {
         /// <summary>
         /// Scorches the entire namespace that the <see cref="NamespaceManager"/> is connected to.
-        /// Current this wipes out all queues and topics. This is used mostly by integration tests, to guarantee that
+        /// Currently this wipes out all queues and topics. This is used mostly by integration tests, to guarantee that
         /// both queue and topic creation processes are in place and working as intended.
         /// </summary>
         /// <param name="nsm">The <see cref="NamespaceManager"/> we are using to scorch the namespace.</param>

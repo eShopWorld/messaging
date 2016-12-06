@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using DevOpsFlex.Messaging;
 using DevOpsFlex.Messaging.Tests;
+using Microsoft.ServiceBus;
 using Xunit;
 
 // ReSharper disable once CheckNamespace
@@ -11,9 +12,9 @@ public class MessengerTest
     public class Integration
     {
         [Fact, Trait("Category", "Integration")]
-        public void TestMethod1()
+        public async Task TestMethod1()
         {
-            // MAKE SURE WE PERFORM THE INITIAL SCORCH - extend namespace manager?
+            await NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString()).ScorchNamespace();
 
             IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString());
 

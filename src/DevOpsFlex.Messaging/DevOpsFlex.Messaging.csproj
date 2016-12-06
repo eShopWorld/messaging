@@ -74,6 +74,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ErrorQueue.cs" />
+    <Compile Include="NamespaceManagerExtensions.cs" />
     <Compile Include="ObjectReferenceEqualityComparer.cs" />
     <Compile Include="IMessage.cs" />
     <Compile Include="IMessenger.cs" />

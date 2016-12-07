@@ -3,7 +3,7 @@
     using System;
     using JetBrains.Annotations;
 
-    public interface IMessenger
+    public interface IMessenger : IDisposable
     {
         /// <summary>
         /// Sends a message.

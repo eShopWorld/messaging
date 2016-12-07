@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
 using DevOpsFlex.Messaging;
 using DevOpsFlex.Messaging.Tests;
@@ -17,7 +17,7 @@ public class MessengerTest
     public class Integration
     {
         [Theory, Trait("Category", "Integration")]
-        [MemberData(nameof(GetData_Test_SendingRandomMessages))]
+        [MemberData(nameof(GetData_TestMessageTypes))]
         public async Task Test_SendingRandomMessages<T>(T _)
             where T : IMessage, new() // be careful with this, if the test doesn't run it's because the T validation is broken
         {
@@ -29,22 +29,70 @@ public class MessengerTest
             var sendCount = new Random().Next(1, 10);
             await NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString()).ScorchNamespace();
 
-            IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString());
-            var messages = Enumerable.Repeat(new T(), sendCount).ToList();
+            var messages = new List<T>();
+            for (var i = 0; i < sendCount; i++) { messages.Add(new T()); }
 
-            foreach (var message in messages)
+            using (IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString()))
             {
-                msn.Send(message);
+                foreach (var message in messages)
+                {
+                    msn.Send(message);
+                }
             }
 
+            await Task.Delay(TimeSpan.FromSeconds(5)); // wait 5 seconds to flush out all the messages
+
             var qClient = QueueClient.CreateFromConnectionString(NamespaceHelper.GetConnectionString(), typeof(T).FullName);
-            var rMessages = (await qClient.MaterializeBatchAsync<T>(sendCount)).ToList();
+            var rMessages = (await qClient.ReadBatchAsync<T>(sendCount)).ToList();
+            rMessages.Should().BeEquivalentTo(messages);
+
+            qClient.Close();
+        }
+
+        [Theory, Trait("Category", "Integration")]
+        [MemberData(nameof(GetData_TestMessageTypes))]
+        public async Task Test_ReceivingRandomMessages<T>(T _)
+            where T : IMessage, new() // be careful with this, if the test doesn't run it's because the T validation is broken
+        {
+            // inline data check, kill the test if it's not ITestMessage<T>
+            typeof(ITestMessage<T>).IsAssignableFrom(typeof(T))
+                                   .Should()
+                                   .BeTrue($"You need to inline classes that implement {nameof(ITestMessage<T>)}, which isn't the case for {typeof(T).FullName}");
+
+            var receiveCount = new Random().Next(1, 10);
+            await NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString()).ScorchNamespace();
+
+            var ts = new CancellationTokenSource();
+
+            // We need to create the messenger before sending the messages to avoid writing unecessary code to create the queue
+            // during the test. Receive will create the queue automatically. This breaks the AAA pattern by design.
+            var rMessages = new List<T>();
+            var messages = new List<T>();
+            for (var i = 0; i < receiveCount; i++) { messages.Add(new T()); }
+
+            IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString());
+
+            msn.Receive<T>(m =>
+            {
+                rMessages.Add(m);
+                if (rMessages.Count == messages.Count) ts.Cancel(); // kill the await
+            });
+
+            var qClient = QueueClient.CreateFromConnectionString(NamespaceHelper.GetConnectionString(), typeof(T).FullName);
+            await qClient.WriteBatchAsync(messages);
+
+            try
+            {
+                await Task.Delay(TimeSpan.FromMinutes(2), ts.Token);
+            }
+            catch (TaskCanceledException) { /* soak the kill switch */ }
+
             rMessages.Should().BeEquivalentTo(messages);
         }
 
-        public static IEnumerable<object[]> GetData_Test_SendingRandomMessages()
+        public static IEnumerable<object[]> GetData_TestMessageTypes()
         {
-            yield return new object[] {new TestMessage()};
+            yield return new object[] { new TestMessage() };
         }
     }
 }

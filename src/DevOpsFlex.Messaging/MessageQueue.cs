@@ -88,7 +88,10 @@
                 var messageBody = message.GetBody<T>();
 #endif
 
-                BrokeredMessages.Add(messageBody, message);
+                // we intentionally want to override the .Add check to avoid
+                // writing more code to cope with message locks that have experied and are being read twice
+                // before erroring.
+                BrokeredMessages[messageBody] = message;
                 MessagesIn.OnNext(messageBody);
             }
         }
@@ -112,8 +115,11 @@
     {
         internal const int LockInSeconds = 60;
 
-        internal static readonly IDictionary<IMessage, BrokeredMessage> BrokeredMessages = new Dictionary<IMessage, BrokeredMessage>();
-        internal static readonly IDictionary<IMessage, Timer> LockTimers = new Dictionary<IMessage, Timer>();
+        internal static readonly IDictionary<IMessage, BrokeredMessage> BrokeredMessages =
+            new Dictionary<IMessage, BrokeredMessage>(ObjectReferenceEqualityComparer<IMessage>.Default);
+
+        internal static readonly IDictionary<IMessage, Timer> LockTimers =
+            new Dictionary<IMessage, Timer>(ObjectReferenceEqualityComparer<IMessage>.Default);
 
         internal static int LockTickInSeconds = (int)Math.Floor(LockInSeconds * 0.6);
 

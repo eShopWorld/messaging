@@ -8,7 +8,8 @@
 
     public static class QueueClientExtensions
     {
-        public static async Task<IEnumerable<T>> MaterializeBatchAsync<T>(this QueueClient client, int count)
+        public static async Task<IEnumerable<T>> ReadBatchAsync<T>(this QueueClient client, int count)
+            where T : IMessage
         {
             var rMessages = (await client.ReceiveBatchAsync(count)).ToList();
 #if DEBUG
@@ -16,6 +17,19 @@
 #else
             return rMessages.Select(m => m.GetBody<T>());
 #endif
+        }
+
+        public static async Task WriteBatchAsync<T>(this QueueClient client, IEnumerable<T> batch)
+            where T : IMessage
+        {
+            foreach (var message in batch)
+            {
+#if DEBUG
+                await client.SendAsync(new BrokeredMessage(message, new DataContractSerializer(typeof(T))));
+#else
+                await client.SendAsync(new BrokeredMessage(message));
+#endif
+            }
         }
     }
 }

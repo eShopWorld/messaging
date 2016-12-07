@@ -18,7 +18,7 @@
     /// Some checks are only valuable if you have a unique messenger class in your application. If you set it up as transient
     /// then some checks will only run against a specific instance and won't really validate the entire behaviour.
     /// </remarks>
-    public class Messenger : IMessenger, IDisposable
+    public class Messenger : IMessenger
     {
         internal static readonly ISubject<IMessage> ErrorMessages = new Subject<IMessage>();
 

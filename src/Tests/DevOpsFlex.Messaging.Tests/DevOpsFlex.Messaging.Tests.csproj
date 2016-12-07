@@ -120,6 +120,7 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="ITestMessage.cs" />
     <Compile Include="Lorem\EnumerableExtensions.cs" />
     <Compile Include="Lorem\Lorem.cs" />
     <Compile Include="Lorem\NumberExtensions.cs" />

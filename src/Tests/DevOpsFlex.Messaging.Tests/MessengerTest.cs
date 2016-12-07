@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
@@ -15,15 +16,20 @@ public class MessengerTest
     [Collection("Integration")]
     public class Integration
     {
-        [Fact, Trait("Category", "Integration")]
-        public async Task Test_SendingFiveRandomMessages()
+        [Theory, Trait("Category", "Integration")]
+        [MemberData(nameof(GetData_Test_SendingRandomMessages))]
+        public async Task Test_SendingRandomMessages<T>(T _)
+            where T : IMessage, new() // be careful with this, if the test doesn't run it's because the T validation is broken
         {
-            const int sendCount = 5;
+            // inline data check
+            typeof(ITestMessage<T>).IsAssignableFrom(typeof(T)).Should().BeTrue();
+
+            var sendCount = new Random().Next(1, 10);
             await NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString()).ScorchNamespace();
 
-            var qClient = QueueClient.CreateFromConnectionString(NamespaceHelper.GetConnectionString(), typeof(TestMessage).FullName);
+            var qClient = QueueClient.CreateFromConnectionString(NamespaceHelper.GetConnectionString(), typeof(T).FullName);
             IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString());
-            var messages = TestMessage.Random(sendCount).ToList();
+            var messages = Enumerable.Repeat(new T(), sendCount).ToList();
 
             foreach (var message in messages)
             {
@@ -36,21 +42,24 @@ public class MessengerTest
             foreach (var message in rMessages)
             {
 #if DEBUG
-                var rMessage = message.GetBody<TestMessage>(new DataContractSerializer(typeof(TestMessage)));
+                var rMessage = message.GetBody<T>(new DataContractSerializer(typeof(T)));
 #else
-                var rMessage = message.GetBody<TestMessage>();
+                var rMessage = message.GetBody<T>();
 #endif
                 messages.Should().Contain(rMessage);
             }
+        }
+
+        public static IEnumerable<object[]> GetData_Test_SendingRandomMessages()
+        {
+            yield return new object[] {new TestMessage()};
         }
     }
 }
 
 namespace DevOpsFlex.Messaging.Tests
 {
-    using System.Collections.Generic;
-
-    public class TestMessage : IMessage, IEquatable<TestMessage>
+    public class TestMessage : ITestMessage<TestMessage>
     {
         private static readonly Random Rng = new Random();
 
@@ -60,27 +69,11 @@ namespace DevOpsFlex.Messaging.Tests
 
         public float Price { get; set; }
 
-        public static TestMessage Random()
+        public TestMessage()
         {
-            return new TestMessage
-            {
-                Name = Lorem.GetSentence(),
-                Stuff = Lorem.GetParagraph(),
-                Price = Rng.Next(100)
-            };
-        }
-
-        public static IEnumerable<TestMessage> Random(int count)
-        {
-            for (var i = 0; i < count; i++)
-            {
-                yield return new TestMessage
-                {
-                    Name = Lorem.GetSentence(),
-                    Stuff = Lorem.GetParagraph(),
-                    Price = Rng.Next(100)
-                };
-            }
+            Name = Lorem.GetSentence();
+            Stuff = Lorem.GetParagraph();
+            Price = Rng.Next(100);
         }
 
         public bool Equals(TestMessage other)

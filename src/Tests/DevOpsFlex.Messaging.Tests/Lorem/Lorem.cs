@@ -5,6 +5,9 @@ namespace DevOpsFlex.Messaging.Tests
     using System.Collections.Generic;
     using System.Linq;
 
+    /// <summary>
+    /// From: https://github.com/jonwingfield/Faker.Net
+    /// </summary>
     public static class Lorem
     {
         private static readonly Random Rng = new Random();

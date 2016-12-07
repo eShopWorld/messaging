@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Runtime.Serialization;
     using System.Threading;
     using System.Threading.Tasks;
     using JetBrains.Annotations;
@@ -63,7 +64,11 @@
         /// <returns>The async <see cref="Task"/> wrapper.</returns>
         internal async Task Send([NotNull]IMessage message)
         {
+#if DEBUG
+            await QueueClient.SendAsync(new BrokeredMessage(message, new DataContractSerializer(typeof(T))));
+#else
             await QueueClient.SendAsync(new BrokeredMessage(message));
+#endif
         }
 
         /// <summary>
@@ -77,7 +82,11 @@
 
             foreach (var message in messages)
             {
+#if DEBUG
+                var messageBody = message.GetBody<T>(new DataContractSerializer(typeof(T)));
+#else
                 var messageBody = message.GetBody<T>();
+#endif
 
                 BrokeredMessages.Add(messageBody, message);
                 MessagesIn.OnNext(messageBody);

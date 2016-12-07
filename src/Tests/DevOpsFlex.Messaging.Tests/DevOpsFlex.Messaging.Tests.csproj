@@ -128,6 +128,7 @@
     <Compile Include="MessengerTest.cs" />
     <Compile Include="NamespaceHelper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="QueueClientExtensions.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

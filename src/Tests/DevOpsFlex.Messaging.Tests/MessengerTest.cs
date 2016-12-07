@@ -21,13 +21,14 @@ public class MessengerTest
         public async Task Test_SendingRandomMessages<T>(T _)
             where T : IMessage, new() // be careful with this, if the test doesn't run it's because the T validation is broken
         {
-            // inline data check
-            typeof(ITestMessage<T>).IsAssignableFrom(typeof(T)).Should().BeTrue();
+            // inline data check, kill the test if it's not ITestMessage<T>
+            typeof(ITestMessage<T>).IsAssignableFrom(typeof(T))
+                                   .Should()
+                                   .BeTrue($"You need to inline classes that implement {nameof(ITestMessage<T>)}, which isn't the case for {typeof(T).FullName}");
 
             var sendCount = new Random().Next(1, 10);
             await NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString()).ScorchNamespace();
 
-            var qClient = QueueClient.CreateFromConnectionString(NamespaceHelper.GetConnectionString(), typeof(T).FullName);
             IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString());
             var messages = Enumerable.Repeat(new T(), sendCount).ToList();
 
@@ -36,18 +37,9 @@ public class MessengerTest
                 msn.Send(message);
             }
 
-            var rMessages = (await qClient.ReceiveBatchAsync(sendCount)).ToList();
-            messages.Should().HaveSameCount(rMessages);
-
-            foreach (var message in rMessages)
-            {
-#if DEBUG
-                var rMessage = message.GetBody<T>(new DataContractSerializer(typeof(T)));
-#else
-                var rMessage = message.GetBody<T>();
-#endif
-                messages.Should().Contain(rMessage);
-            }
+            var qClient = QueueClient.CreateFromConnectionString(NamespaceHelper.GetConnectionString(), typeof(T).FullName);
+            var rMessages = (await qClient.MaterializeBatchAsync<T>(sendCount)).ToList();
+            rMessages.Should().BeEquivalentTo(messages);
         }
 
         public static IEnumerable<object[]> GetData_Test_SendingRandomMessages()

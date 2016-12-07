@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using DevOpsFlex.Messaging;
 using DevOpsFlex.Messaging.Tests;
 using FluentAssertions;
+using JetBrains.Annotations;
 using Microsoft.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
 using Xunit;
@@ -38,15 +39,15 @@ public class MessengerTest
                 {
                     msn.Send(message);
                 }
+
+                await Task.Delay(TimeSpan.FromSeconds(5)); // wait 5 seconds to flush out all the messages
+
+                var qClient = QueueClient.CreateFromConnectionString(NamespaceHelper.GetConnectionString(), typeof(T).FullName);
+                var rMessages = (await qClient.ReadBatchAsync<T>(sendCount)).ToList();
+                rMessages.Should().BeEquivalentTo(messages);
+
+                qClient.Close();
             }
-
-            await Task.Delay(TimeSpan.FromSeconds(5)); // wait 5 seconds to flush out all the messages
-
-            var qClient = QueueClient.CreateFromConnectionString(NamespaceHelper.GetConnectionString(), typeof(T).FullName);
-            var rMessages = (await qClient.ReadBatchAsync<T>(sendCount)).ToList();
-            rMessages.Should().BeEquivalentTo(messages);
-
-            qClient.Close();
         }
 
         [Theory, Trait("Category", "Integration")]
@@ -62,32 +63,33 @@ public class MessengerTest
             var receiveCount = new Random().Next(1, 10);
             await NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString()).ScorchNamespace();
 
-            var ts = new CancellationTokenSource();
-
             // We need to create the messenger before sending the messages to avoid writing unecessary code to create the queue
             // during the test. Receive will create the queue automatically. This breaks the AAA pattern by design.
             var rMessages = new List<T>();
             var messages = new List<T>();
             for (var i = 0; i < receiveCount; i++) { messages.Add(new T()); }
 
-            IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString());
-
-            msn.Receive<T>(m =>
+            // ReSharper disable once AccessToDisposedClosure
+            using (var ts = new CancellationTokenSource())
+            using (IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString()))
             {
-                rMessages.Add(m);
-                if (rMessages.Count == messages.Count) ts.Cancel(); // kill the await
-            });
+                msn.Receive<T>(m =>
+                {
+                    rMessages.Add(m);
+                    if (rMessages.Count == messages.Count) ts.Cancel(); // kill the await
+                });
 
-            var qClient = QueueClient.CreateFromConnectionString(NamespaceHelper.GetConnectionString(), typeof(T).FullName);
-            await qClient.WriteBatchAsync(messages);
+                var qClient = QueueClient.CreateFromConnectionString(NamespaceHelper.GetConnectionString(), typeof(T).FullName);
+                await qClient.WriteBatchAsync(messages);
 
-            try
-            {
-                await Task.Delay(TimeSpan.FromMinutes(2), ts.Token);
+                try
+                {
+                    await Task.Delay(TimeSpan.FromMinutes(2), ts.Token);
+                }
+                catch (TaskCanceledException) { /* soak the kill switch */ }
+
+                rMessages.Should().BeEquivalentTo(messages);
             }
-            catch (TaskCanceledException) { /* soak the kill switch */ }
-
-            rMessages.Should().BeEquivalentTo(messages);
         }
 
         public static IEnumerable<object[]> GetData_TestMessageTypes()
@@ -130,7 +132,7 @@ namespace DevOpsFlex.Messaging.Tests
             if (ReferenceEquals(null, obj)) return false;
             if (ReferenceEquals(this, obj)) return true;
             if (obj.GetType() != GetType()) return false;
-            return Equals((TestMessage) obj);
+            return Equals((TestMessage)obj);
         }
 
         public override int GetHashCode()

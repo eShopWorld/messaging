@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using DevOpsFlex.Messaging;
 using DevOpsFlex.Messaging.Tests;
 using FluentAssertions;
-using JetBrains.Annotations;
 using Microsoft.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
 using Xunit;
@@ -19,13 +18,33 @@ public class MessengerTest
     {
         [Theory, Trait("Category", "Integration")]
         [MemberData(nameof(GetData_TestMessageTypes))]
+        public async Task Test_SendCreatesTheQueue<T>(T _)
+            where T : IMessage, new() // be careful with this, if the test doesn't run it's because the T validation is broken
+        {
+            _.CheckInlineType(); // inline data check
+
+            var nsm = NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString());
+            await nsm.ScorchNamespace();
+
+            using (IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString()))
+            {
+                msn.Send(new T());
+
+                await Task.Delay(TimeSpan.FromSeconds(5)); // wait 5 seconds to flush out all the messages
+
+                var queues = (await nsm.GetQueuesAsync()).ToList();
+
+                queues.Should().HaveCount(2); // include the error queue always
+                queues.SingleOrDefault(q => string.Equals(q.Path, typeof(T).FullName, StringComparison.CurrentCultureIgnoreCase)).Should().NotBeNull();
+            }
+        }
+
+        [Theory, Trait("Category", "Integration")]
+        [MemberData(nameof(GetData_TestMessageTypes))]
         public async Task Test_SendingRandomMessages<T>(T _)
             where T : IMessage, new() // be careful with this, if the test doesn't run it's because the T validation is broken
         {
-            // inline data check, kill the test if it's not ITestMessage<T>
-            typeof(ITestMessage<T>).IsAssignableFrom(typeof(T))
-                                   .Should()
-                                   .BeTrue($"You need to inline classes that implement {nameof(ITestMessage<T>)}, which isn't the case for {typeof(T).FullName}");
+            _.CheckInlineType(); // inline data check
 
             var sendCount = new Random().Next(1, 10);
             await NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString()).ScorchNamespace();
@@ -55,16 +74,14 @@ public class MessengerTest
         public async Task Test_ReceivingRandomMessages<T>(T _)
             where T : IMessage, new() // be careful with this, if the test doesn't run it's because the T validation is broken
         {
-            // inline data check, kill the test if it's not ITestMessage<T>
-            typeof(ITestMessage<T>).IsAssignableFrom(typeof(T))
-                                   .Should()
-                                   .BeTrue($"You need to inline classes that implement {nameof(ITestMessage<T>)}, which isn't the case for {typeof(T).FullName}");
+            _.CheckInlineType(); // inline data check
 
             var receiveCount = new Random().Next(1, 10);
             await NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString()).ScorchNamespace();
 
             // We need to create the messenger before sending the messages to avoid writing unecessary code to create the queue
             // during the test. Receive will create the queue automatically. This breaks the AAA pattern by design.
+            // This logic also ensures that receive will actually create the queue properly.
             var rMessages = new List<T>();
             var messages = new List<T>();
             for (var i = 0; i < receiveCount; i++) { messages.Add(new T()); }
@@ -73,11 +90,12 @@ public class MessengerTest
             using (var ts = new CancellationTokenSource())
             using (IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString()))
             {
-                msn.Receive<T>(m =>
-                {
-                    rMessages.Add(m);
-                    if (rMessages.Count == messages.Count) ts.Cancel(); // kill the await
-                });
+                msn.Receive<T>(
+                    m =>
+                    {
+                        rMessages.Add(m);
+                        if (rMessages.Count == messages.Count) ts.Cancel(); // kill the await
+                    });
 
                 var qClient = QueueClient.CreateFromConnectionString(NamespaceHelper.GetConnectionString(), typeof(T).FullName);
                 await qClient.WriteBatchAsync(messages);
@@ -96,6 +114,19 @@ public class MessengerTest
         {
             yield return new object[] { new TestMessage() };
         }
+    }
+}
+
+
+static class MessengerTestExtensions
+{
+    public static void CheckInlineType<T>(this T type)
+    {
+        // inline data check, kill the test if it's not ITestMessage<T>
+        typeof(ITestMessage<T>).IsAssignableFrom(typeof(T))
+                               .Should()
+                               .BeTrue($"You need to inline classes that implement {nameof(ITestMessage<T>)}, which isn't the case for {typeof(T).FullName}");
+
     }
 }
 

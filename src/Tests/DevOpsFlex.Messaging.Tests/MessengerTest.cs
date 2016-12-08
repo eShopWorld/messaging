@@ -31,11 +31,24 @@ public class MessengerTest
                 msn.Send(new T());
 
                 await Task.Delay(TimeSpan.FromSeconds(5)); // wait 5 seconds to flush out all the messages
+                (await nsm.GetQueuesAsync()).ToList().AssertSingleQueueExists(typeof(T));
+            }
+        }
 
-                var queues = (await nsm.GetQueuesAsync()).ToList();
+        [Theory, Trait("Category", "Integration")]
+        [MemberData(nameof(GetData_TestMessageTypes))]
+        public async Task Test_ReceiveCreatesTheQueue<T>(T _)
+            where T : IMessage, new() // be careful with this, if the test doesn't run it's because the T validation is broken
+        {
+            _.CheckInlineType(); // inline data check
 
-                queues.Should().HaveCount(2); // include the error queue always
-                queues.SingleOrDefault(q => string.Equals(q.Path, typeof(T).FullName, StringComparison.CurrentCultureIgnoreCase)).Should().NotBeNull();
+            var nsm = NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString());
+            await nsm.ScorchNamespace();
+
+            using (IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString()))
+            {
+                msn.Receive<T>(__ => { });
+                (await nsm.GetQueuesAsync()).ToList().AssertSingleQueueExists(typeof(T));
             }
         }
 
@@ -118,15 +131,21 @@ public class MessengerTest
 }
 
 
-static class MessengerTestExtensions
+public static class MessengerTestExtensions
 {
-    public static void CheckInlineType<T>(this T type)
+    public static void CheckInlineType<T>(this T _)
+        where T : IMessage, new()
     {
-        // inline data check, kill the test if it's not ITestMessage<T>
+        // inline data check, kill the test with a detailed message if it's not ITestMessage<T>
         typeof(ITestMessage<T>).IsAssignableFrom(typeof(T))
                                .Should()
                                .BeTrue($"You need to inline classes that implement {nameof(ITestMessage<T>)}, which isn't the case for {typeof(T).FullName}");
+    }
 
+    public static void AssertSingleQueueExists(this List<QueueDescription> queues, Type type)
+    {
+        queues.Should().HaveCount(2); // always include the error queue
+        queues.SingleOrDefault(q => string.Equals(q.Path, type.FullName, StringComparison.CurrentCultureIgnoreCase)).Should().NotBeNull();
     }
 }
 

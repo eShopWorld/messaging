@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using DevOpsFlex.Messaging;
@@ -8,6 +9,8 @@ using DevOpsFlex.Messaging.Tests;
 using FluentAssertions;
 using Microsoft.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
+using Microsoft.VisualStudio.Profiler;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Xunit;
 
 // ReSharper disable once CheckNamespace
@@ -28,7 +31,7 @@ public class MessengerTest
 
             using (IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString()))
             {
-                msn.Send(new T());
+                await msn.Send(new T());
 
                 await Task.Delay(TimeSpan.FromSeconds(5)); // wait 5 seconds to flush out all the messages
                 (await nsm.GetQueuesAsync()).ToList().AssertSingleQueueExists(typeof(T));
@@ -69,7 +72,7 @@ public class MessengerTest
             {
                 foreach (var message in messages)
                 {
-                    msn.Send(message);
+                    await msn.Send(message);
                 }
 
                 await Task.Delay(TimeSpan.FromSeconds(5)); // wait 5 seconds to flush out all the messages
@@ -126,6 +129,47 @@ public class MessengerTest
         public static IEnumerable<object[]> GetData_TestMessageTypes()
         {
             yield return new object[] { new TestMessage() };
+        }
+    }
+
+    // VS2015 can't profile xUnit tests (try again once VS2017 RTMs!)
+    [TestClass]
+    public class Profiler
+    {
+        [TestMethod, TestCategory("Profiler")]
+        public async Task Profile_SendBurst_100_TestMessage()
+        {
+            await SendBurst(100);
+        }
+
+        [TestMethod, TestCategory("Profiler")]
+        public async Task Profile_SendBurst_1000_TestMessage()
+        {
+            await SendBurst(1000);
+        }
+
+        private static async Task SendBurst(int count)
+        {
+            DataCollection.StopProfile(ProfileLevel.Global, DataCollection.CurrentId);
+            await NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString()).ScorchNamespace();
+
+            var messages = new List<TestMessage>();
+            for (var i = 0; i < count; i++)
+            {
+                messages.Add(new TestMessage());
+            }
+
+            using (IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString()))
+            {
+                // send one to get the queues created outside the collection
+                await msn.Send(new TestMessage());
+
+                DataCollection.StartProfile(ProfileLevel.Global, DataCollection.CurrentId);
+                foreach (var message in messages)
+                {
+                    await msn.Send(message);
+                }
+            }
         }
     }
 }

@@ -26,7 +26,6 @@
         internal readonly string ConnectionString;
 
         internal readonly ISubject<IMessage> MessagesIn = new Subject<IMessage>();
-        internal readonly ISubject<IMessage> MessagesOut = new Subject<IMessage>();
 
         internal readonly Dictionary<Type, IDisposable> MessageSubs = new Dictionary<Type, IDisposable>();
         internal readonly Dictionary<Type, MessageQueue> Queues = new Dictionary<Type, MessageQueue>();
@@ -47,11 +46,15 @@
         /// </summary>
         /// <typeparam name="T">The type of the message that we are sending.</typeparam>
         /// <param name="message">The message that we are sending.</param>
-        public void Send<T>(T message)
+        public async Task Send<T>(T message)
             where T : IMessage
         {
-            SetupMessageType<T>();
-            MessagesOut.OnNext(message);
+            if (!Queues.ContainsKey(typeof(T))) // double check, to avoid locking it here to keep it thread safe
+            {
+                SetupMessageType<T>();
+            }
+
+            await ((MessageQueue<T>) Queues[typeof(T)]).Send(message);
         }
 
         /// <summary>
@@ -89,7 +92,7 @@
             {
                 if (!Queues.ContainsKey(typeof(T)))
                 {
-                    var queue = new MessageQueue<T>(ConnectionString, MessagesIn.AsObserver(), MessagesOut.AsObservable());
+                    var queue = new MessageQueue<T>(ConnectionString, MessagesIn.AsObserver());
                     Queues.Add(typeof(T), queue);
                 }
             }

@@ -16,8 +16,6 @@
         where T : IMessage
     {
         internal readonly IObserver<IMessage> MessagesIn;
-        internal readonly IDisposable OutSubscription;
-
         internal Timer ReadTimer;
 
         /// <summary>
@@ -25,13 +23,10 @@
         /// </summary>
         /// <param name="connectionString">The Azure Service Bus connection string.</param>
         /// <param name="messagesIn">The <see cref="IObserver{IMessage}"/> used to push received messages into the pipeline.</param>
-        /// <param name="messagesOut">The <see cref="IObservable{IMessage}"/> used to take messages that are sent from the pipeline.</param>
-        public MessageQueue([NotNull]string connectionString, [NotNull]IObserver<IMessage> messagesIn, [NotNull]IObservable<IMessage> messagesOut)
+        public MessageQueue([NotNull]string connectionString, [NotNull]IObserver<IMessage> messagesIn)
             : base(connectionString, typeof(T))
         {
             MessagesIn = messagesIn;
-
-            OutSubscription = messagesOut.Subscribe(async m => await Send(m));
         }
 
         /// <summary>
@@ -101,9 +96,7 @@
         /// </summary>
         public override void Dispose()
         {
-            OutSubscription?.Dispose();
             ReadTimer?.Dispose();
-
             base.Dispose();
         }
     }

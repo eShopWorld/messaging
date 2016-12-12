@@ -9,6 +9,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DevOpsFlex.Messaging", "Dev
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DevOpsFlex.Messaging.Tests", "Tests\DevOpsFlex.Messaging.Tests\DevOpsFlex.Messaging.Tests.csproj", "{966B329C-E89E-44C2-AFD0-476944307483}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{A7CF6C38-1E42-48AC-A686-9002B1C5C47F}"
+	ProjectSection(SolutionItems) = preProject
+		..\README.md = ..\README.md
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DevOpsFlex.Messaging.Profiler", "Tests\DevOpsFlex.Messaging.Tests\DevOpsFlex.Messaging.Profiler\DevOpsFlex.Messaging.Profiler.csproj", "{9D42534D-5B32-4D1B-8412-D2C3F97F364D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -23,11 +30,16 @@ Global
 		{966B329C-E89E-44C2-AFD0-476944307483}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{966B329C-E89E-44C2-AFD0-476944307483}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{966B329C-E89E-44C2-AFD0-476944307483}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9D42534D-5B32-4D1B-8412-D2C3F97F364D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D42534D-5B32-4D1B-8412-D2C3F97F364D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9D42534D-5B32-4D1B-8412-D2C3F97F364D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9D42534D-5B32-4D1B-8412-D2C3F97F364D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{966B329C-E89E-44C2-AFD0-476944307483} = {3A90463E-904A-4699-8769-EF8C47127DDC}
+		{9D42534D-5B32-4D1B-8412-D2C3F97F364D} = {3A90463E-904A-4699-8769-EF8C47127DDC}
 	EndGlobalSection
 EndGlobal

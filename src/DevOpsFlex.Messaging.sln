@@ -11,6 +11,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DevOpsFlex.Messaging.Tests"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{A7CF6C38-1E42-48AC-A686-9002B1C5C47F}"
 	ProjectSection(SolutionItems) = preProject
+		codecoverage.runsettings = codecoverage.runsettings
 		..\README.md = ..\README.md
 	EndProjectSection
 EndProject

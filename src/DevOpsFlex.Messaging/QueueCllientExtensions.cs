@@ -1,5 +1,7 @@
 ﻿namespace DevOpsFlex.Messaging
 {
+    using System;
+    using System.Diagnostics;
     using System.Threading.Tasks;
     using JetBrains.Annotations;
     using Microsoft.ServiceBus;
@@ -27,6 +29,24 @@
             }
 
             return QueueClient.CreateFromConnectionString(connectionString, entityPath, ReceiveMode.PeekLock);
+        }
+    }
+
+    public static class TypeExtensions
+    {
+        public static string GetQueueName(this Type type)
+        {
+#if DEBUG
+            var queueName = type.FullName;
+            if (Debugger.IsAttached)
+            {
+                queueName += $"-{Environment.UserName}";
+            }
+
+            return queueName;
+#else
+            return messageType.FullName;
+#endif
         }
     }
 }

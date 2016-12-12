@@ -31,6 +31,7 @@ public class MessengerTest
                 await msn.Send(new T());
 
                 await Task.Delay(TimeSpan.FromSeconds(5)); // wait 5 seconds to flush out all the messages
+
                 (await nsm.GetQueuesAsync()).ToList().AssertSingleQueueExists(typeof(T));
             }
         }
@@ -144,7 +145,7 @@ public static class MessengerTestExtensions
     public static void AssertSingleQueueExists(this List<QueueDescription> queues, Type type)
     {
         queues.Should().HaveCount(2); // always include the error queue
-        queues.SingleOrDefault(q => string.Equals(q.Path, type.FullName, StringComparison.CurrentCultureIgnoreCase)).Should().NotBeNull();
+        queues.SingleOrDefault(q => string.Equals(q.Path, type.GetQueueName(), StringComparison.CurrentCultureIgnoreCase)).Should().NotBeNull();
     }
 }
 

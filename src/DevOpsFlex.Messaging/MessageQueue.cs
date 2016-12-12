@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Runtime.Serialization;
     using System.Threading;
     using System.Threading.Tasks;
@@ -140,7 +141,7 @@ I suggest you reduce the size of the namespace '{messageType.Namespace}'.");
                 throw new InvalidOperationException($"Are you seriously creating a message named {ErrorQueue.ErrorQueueName} ???");
             }
 
-            QueueClient = QueueCllientExtensions.CreateIfNotExists(connectionString, messageType.FullName).Result; // unwrapp
+            QueueClient = QueueCllientExtensions.CreateIfNotExists(connectionString, messageType.GetQueueName()).Result; // unwrapp
         }
 
         /// <summary>

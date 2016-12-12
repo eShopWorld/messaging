@@ -45,7 +45,7 @@
 
             return queueName;
 #else
-            return messageType.FullName;
+            return type.FullName;
 #endif
         }
     }

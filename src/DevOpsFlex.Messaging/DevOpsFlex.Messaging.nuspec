@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+  <metadata>
+    <id>DevOpsFlex.Messaging</id>
+    <version>1.0.0-rc</version>
+    <title>DevOpsFlex.Messaging</title>
+    <authors>David Rodrigues</authors>
+    <owners>eShopWorld</owners>
+    <licenseUrl>https://github.com/eShopWorld/devopsflex-messaging/blob/master/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/eShopWorld/devopsflex-messaging</projectUrl>
+    <!--<iconUrl>http://ICON_URL_HERE_OR_DELETE_THIS_LINE</iconUrl>-->
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>eShopWorld common messaging azure service bus</description>
+    <releaseNotes>Initial release.</releaseNotes>
+    <copyright>Copyright 2016</copyright>
+    <tags>Azure Service Bus, Messaging</tags>
+    <dependencies>
+      <dependency id="WindowsAzure.ServiceBus" version="[3.4.3,)" />
+      <dependency id="JetBrains.Annotations" version="[10.2.1,)" />
+      <dependency id="System.Reactive" version="[3.1.1,)" />
+    </dependencies>
+  </metadata>
+</package>

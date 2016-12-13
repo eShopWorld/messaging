@@ -80,6 +80,20 @@
         }
 
         /// <summary>
+        /// Setups up the required receive pipeline for the given message type and returns a reactive
+        /// <see cref="IObservable{T}"/> that you can plug into.
+        /// </summary>
+        /// <typeparam name="T">The type of the message we want the reactive pipeline for.</typeparam>
+        /// <returns>The typed <see cref="IObservable{T}"/> that you can plug into.</returns>
+        public IObservable<T> GetObservable<T>()
+            where T : IMessage
+        {
+            SetupMessageType<T>().StartReading();
+
+            return MessagesIn.OfType<T>().AsObservable();
+        }
+
+        /// <summary>
         /// Sets the messenger up for either sending or receiving a specific message of type <typeparamref name="T"/>.
         /// This will create the <see cref="Microsoft.ServiceBus.Messaging.QueueClient"/> but will not set it up for reading the queue.
         /// </summary>

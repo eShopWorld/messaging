@@ -20,7 +20,7 @@
         /// </summary>
         /// <param name="message">The message that we want to LOCK.</param>
         /// <returns>The async <see cref="Task"/> void wrapper.</returns>
-        public static async Task Lock(IMessage message)
+        public static async Task Lock(this IMessage message)
         {
             await Messenger.Lock(message);
         }
@@ -30,7 +30,7 @@
         /// </summary>
         /// <param name="message">The message that we want to COMPLETE.</param>
         /// <returns>The async <see cref="Task"/> void wrapper.</returns>
-        public static async Task Complete(IMessage message)
+        public static async Task Complete(this IMessage message)
         {
             await Messenger.Complete(message);
         }
@@ -40,7 +40,7 @@
         /// </summary>
         /// <param name="message">The message that we want to ABANDON.</param>
         /// <returns>The async <see cref="Task"/> void wrapper.</returns>
-        public static async Task Abandon(IMessage message)
+        public static async Task Abandon(this IMessage message)
         {
             await Messenger.Abandon(message);
         }
@@ -50,7 +50,7 @@
         /// </summary>
         /// <param name="message">The message that we want to ERROR.</param>
         /// <returns>The async <see cref="Task"/> void wrapper.</returns>
-        public static async Task Error(IMessage message)
+        public static async Task Error(this IMessage message)
         {
             await Messenger.Error(message);
         }

@@ -59,11 +59,11 @@
 
         /// <summary>
         /// Sets up a call back for receiving any message of type <typeparamref name="T"/>.
-        /// If you try to setup more then one callback to the same message type <see cref="T"/> you'll get an <see cref="InvalidOperationException"/>.
+        /// If you try to setup more then one callback to the same message type <typeparamref name="T"/> you'll get an <see cref="InvalidOperationException"/>.
         /// </summary>
         /// <typeparam name="T">The type of the message that we are subscribing to receiving.</typeparam>
         /// <param name="callback">The <see cref="Action{T}"/> delegate that will be called for each message received.</param>
-        /// <exception cref="InvalidOperationException">Thrown when you attempt to setup multiple callbacks against the same <see cref="T"/> parameter.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when you attempt to setup multiple callbacks against the same <typeparamref name="T"/> parameter.</exception>
         public void Receive<T>(Action<T> callback)
             where T : IMessage
         {

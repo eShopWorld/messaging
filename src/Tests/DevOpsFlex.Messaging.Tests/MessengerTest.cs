@@ -93,9 +93,6 @@ public class MessengerTest
             var receiveCount = new Random().Next(1, 10);
             await NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString()).ScorchNamespace();
 
-            // We need to create the messenger before sending the messages to avoid writing unecessary code to create the queue
-            // during the test. Receive will create the queue automatically. This breaks the AAA pattern by design.
-            // This logic also ensures that receive will actually create the queue properly.
             var rMessages = new List<T>();
             var messages = new List<T>();
             for (var i = 0; i < receiveCount; i++) { messages.Add(new T()); }
@@ -104,11 +101,14 @@ public class MessengerTest
             using (var ts = new CancellationTokenSource())
             using (IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString()))
             {
+                // We need to create the messenger before sending the messages to avoid writing unecessary code to create the queue
+                // during the test. Receive will create the queue automatically. This breaks the AAA pattern by design.
+                // This test flow also ensures that receive will actually create the queue properly.
                 msn.Receive<T>(
                     m =>
                     {
                         rMessages.Add(m);
-                        if (rMessages.Count == messages.Count) ts.Cancel(); // kill the await
+                        if (rMessages.Count == messages.Count) ts.Cancel(); // kill switch
                     });
 
                 var qClient = QueueClient.CreateFromConnectionString(NamespaceHelper.GetConnectionString(), typeof(T).FullName);
@@ -121,6 +121,102 @@ public class MessengerTest
                 catch (TaskCanceledException) { /* soak the kill switch */ }
 
                 rMessages.Should().BeEquivalentTo(messages);
+            }
+        }
+
+        [Theory, Trait("Category", "Integration")]
+        [MemberData(nameof(GetData_TestMessageTypes))]
+        public async Task Test_LockMessage_ForFiveMinutes<T>(T _)
+            where T : IMessage, new() // be careful with this, if the test doesn't run it's because the T validation is broken
+        {
+            _.CheckInlineType(); // inline data check
+
+            await NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString()).ScorchNamespace();
+
+            using (IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString()))
+            {
+                await msn.Send(new T());
+
+                var message = default(T);
+                msn.Receive<T>(
+                    async m =>
+                    {
+                        message = m;
+                        await message.Lock();
+                    });
+
+                await Task.Delay(TimeSpan.FromMinutes(5));
+
+                message.Should().NotBeNull();
+                await message.Complete(); // If this throws, Lock failed
+            }
+        }
+
+        [Theory, Trait("Category", "Integration")]
+        [MemberData(nameof(GetData_TestMessageTypes))]
+        public async Task Test_LockAbandon_MessageFlow<T>(T _)
+            where T : IMessage, new() // be careful with this, if the test doesn't run it's because the T validation is broken
+        {
+            _.CheckInlineType(); // inline data check
+
+            await NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString()).ScorchNamespace();
+
+            using (var ts = new CancellationTokenSource())
+            using (IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString()))
+            {
+                await msn.Send(new T());
+
+                msn.Receive<T>(
+                    async m =>
+                    {
+                        await m.Lock();
+                        // ReSharper disable once AccessToDisposedClosure
+                        await Task.Delay(TimeSpan.FromSeconds(5), ts.Token);
+                        await m.Abandon();
+
+                        // ReSharper disable once AccessToDisposedClosure
+                        ts.Cancel(); // kill switch
+                    });
+
+                try
+                {
+                    await Task.Delay(TimeSpan.FromMinutes(2), ts.Token);
+                }
+                catch (TaskCanceledException) { /* soak the kill switch */ }
+            }
+        }
+
+        [Theory, Trait("Category", "Integration")]
+        [MemberData(nameof(GetData_TestMessageTypes))]
+        public async Task Test_LockComplete_MessageFlow<T>(T _)
+            where T : IMessage, new() // be careful with this, if the test doesn't run it's because the T validation is broken
+        {
+            _.CheckInlineType(); // inline data check
+
+            await NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString()).ScorchNamespace();
+
+            using (var ts = new CancellationTokenSource())
+            using (IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString()))
+            {
+                await msn.Send(new T());
+
+                msn.Receive<T>(
+                    async m =>
+                    {
+                        await m.Lock();
+                        // ReSharper disable once AccessToDisposedClosure
+                        await Task.Delay(TimeSpan.FromSeconds(5), ts.Token);
+                        await m.Complete();
+
+                        // ReSharper disable once AccessToDisposedClosure
+                        ts.Cancel(); // kill switch
+                    });
+
+                try
+                {
+                    await Task.Delay(TimeSpan.FromMinutes(2), ts.Token);
+                }
+                catch (TaskCanceledException) { /* soak the kill switch */ }
             }
         }
 

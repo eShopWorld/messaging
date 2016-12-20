@@ -54,7 +54,7 @@
                 SetupMessageType<T>();
             }
 
-            await ((MessageQueue<T>) Queues[typeof(T)]).Send(message);
+            await ((MessageQueue<T>)Queues[typeof(T)]).Send(message);
         }
 
         /// <summary>
@@ -67,16 +67,20 @@
         public void Receive<T>(Action<T> callback)
             where T : IMessage
         {
-            if (MessageSubs.ContainsKey(typeof(T)))
+            lock (Gate)
             {
-                throw new InvalidOperationException("You already added a callback to this message type. Only one callback per type is supported.");
+
+                if (MessageSubs.ContainsKey(typeof(T)))
+                {
+                    throw new InvalidOperationException("You already added a callback to this message type. Only one callback per type is supported.");
+                }
+
+                SetupMessageType<T>().StartReading();
+
+                MessageSubs.Add(
+                    typeof(T),
+                    MessagesIn.OfType<T>().Subscribe(callback));
             }
-
-            SetupMessageType<T>().StartReading();
-
-            MessageSubs.Add(
-                typeof(T),
-                MessagesIn.OfType<T>().Subscribe(callback));
         }
 
         /// <summary>
@@ -111,7 +115,7 @@
                 }
             }
 
-            return (MessageQueue<T>) Queues[typeof(T)];
+            return (MessageQueue<T>)Queues[typeof(T)];
         }
 
         /// <summary>

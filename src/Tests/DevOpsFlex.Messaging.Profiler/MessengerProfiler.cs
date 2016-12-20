@@ -93,7 +93,7 @@ public class MessengerProfiler
             }
         }
 
-        messages.Clear(); // force List release
+        messages.Clear(); // force List de-refence to improve the GC.Collect
     }
 
     private static void InitJbProfilers()

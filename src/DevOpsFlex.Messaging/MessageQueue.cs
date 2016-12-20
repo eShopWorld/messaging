@@ -136,11 +136,6 @@ $@"You can't create queues for the type {messageType.FullName} because the full 
 I suggest you reduce the size of the namespace '{messageType.Namespace}'.");
             }
 
-            if (messageType.FullName.ToLower() == ErrorQueue.ErrorQueueName) // Error queue clash
-            {
-                throw new InvalidOperationException($"Are you seriously creating a message named {ErrorQueue.ErrorQueueName} ???");
-            }
-
             QueueClient = QueueCllientExtensions.CreateIfNotExists(connectionString, messageType.GetQueueName()).Result; // unwrapp
         }
 

@@ -11,6 +11,7 @@ using Microsoft.ServiceBus.Messaging;
 using Xunit;
 
 // ReSharper disable once CheckNamespace
+// ReSharper disable AccessToDisposedClosure
 public class MessengerTest
 {
     [Collection("Integration")]
@@ -75,7 +76,7 @@ public class MessengerTest
 
                 await Task.Delay(TimeSpan.FromSeconds(5)); // wait 5 seconds to flush out all the messages
 
-                var qClient = QueueClient.CreateFromConnectionString(NamespaceHelper.GetConnectionString(), typeof(T).FullName);
+                var qClient = QueueClient.CreateFromConnectionString(NamespaceHelper.GetConnectionString(), typeof(T).GetQueueName());
                 var rMessages = (await qClient.ReadBatchAsync<T>(sendCount)).ToList();
                 rMessages.Should().BeEquivalentTo(messages);
 
@@ -97,7 +98,6 @@ public class MessengerTest
             var messages = new List<T>();
             for (var i = 0; i < receiveCount; i++) { messages.Add(new T()); }
 
-            // ReSharper disable once AccessToDisposedClosure
             using (var ts = new CancellationTokenSource())
             using (IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString()))
             {
@@ -111,7 +111,7 @@ public class MessengerTest
                         if (rMessages.Count == messages.Count) ts.Cancel(); // kill switch
                     });
 
-                var qClient = QueueClient.CreateFromConnectionString(NamespaceHelper.GetConnectionString(), typeof(T).FullName);
+                var qClient = QueueClient.CreateFromConnectionString(NamespaceHelper.GetConnectionString(), typeof(T).GetQueueName());
                 await qClient.WriteBatchAsync(messages);
 
                 try
@@ -170,19 +170,16 @@ public class MessengerTest
                     async m =>
                     {
                         await m.Lock();
-                        // ReSharper disable once AccessToDisposedClosure
                         msn.CancelReceive<T>();
-                        // ReSharper disable once AccessToDisposedClosure
                         await Task.Delay(TimeSpan.FromSeconds(5), ts.Token);
                         await m.Abandon();
 
-                        // ReSharper disable once AccessToDisposedClosure
                         ts.Cancel(); // kill switch
                     });
 
                 try
                 {
-                    await Task.Delay(TimeSpan.FromMinutes(10), ts.Token);
+                    await Task.Delay(TimeSpan.FromMinutes(2), ts.Token);
                 }
                 catch (TaskCanceledException) { /* soak the kill switch */ }
 
@@ -209,11 +206,9 @@ public class MessengerTest
                     async m =>
                     {
                         await m.Lock();
-                        // ReSharper disable once AccessToDisposedClosure
                         await Task.Delay(TimeSpan.FromSeconds(5), ts.Token);
                         await m.Complete();
 
-                        // ReSharper disable once AccessToDisposedClosure
                         ts.Cancel(); // kill switch
                     });
 
@@ -222,6 +217,47 @@ public class MessengerTest
                     await Task.Delay(TimeSpan.FromMinutes(2), ts.Token);
                 }
                 catch (TaskCanceledException) { /* soak the kill switch */ }
+
+                MessageQueue.BrokeredMessages.Should().BeEmpty();
+                MessageQueue.LockTimers.Should().BeEmpty();
+            }
+        }
+
+        [Theory, Trait("Category", "Integration")]
+        [MemberData(nameof(GetData_TestMessageTypes))]
+        public async Task Test_LockError_MessageFlow<T>(T _)
+            where T : IMessage, new() // be careful with this, if the test doesn't run it's because the T validation is broken
+        {
+            _.CheckInlineType(); // inline data check
+
+            await NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString()).ScorchNamespace();
+
+            using (var ts = new CancellationTokenSource())
+            using (IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString()))
+            {
+                var message = new T();
+                await msn.Send(message);
+
+                msn.Receive<T>(
+                    async m =>
+                    {
+                        await m.Lock();
+                        await Task.Delay(TimeSpan.FromSeconds(5), ts.Token);
+                        await m.Error();
+
+                        ts.Cancel(); // kill switch
+                    });
+
+                try
+                {
+                    await Task.Delay(TimeSpan.FromMinutes(2), ts.Token);
+                }
+                catch (TaskCanceledException) { /* soak the kill switch */ }
+
+                var qClient = QueueClient.CreateFromConnectionString(NamespaceHelper.GetConnectionString(), QueueClient.FormatDeadLetterPath(typeof(T).GetQueueName()));
+                var rMessage = (await qClient.ReadBatchAsync<T>(1)).First();
+
+                rMessage.ShouldBeEquivalentTo(message);
 
                 MessageQueue.BrokeredMessages.Should().BeEmpty();
                 MessageQueue.LockTimers.Should().BeEmpty();
@@ -248,13 +284,16 @@ public static class MessengerTestExtensions
 
     public static void AssertSingleQueueExists(this List<QueueDescription> queues, Type type)
     {
-        queues.Should().HaveCount(2); // always include the error queue
+        queues.Should().HaveCount(1);
         queues.SingleOrDefault(q => string.Equals(q.Path, type.GetQueueName(), StringComparison.CurrentCultureIgnoreCase)).Should().NotBeNull();
     }
 }
 
 namespace DevOpsFlex.Messaging.Tests
 {
+    /// <summary>
+    /// A convenient way to generate random Lorem text <see cref="IMessage"/>.
+    /// </summary>
     public class TestMessage : ITestMessage<TestMessage>
     {
         private static readonly Random Rng = new Random();

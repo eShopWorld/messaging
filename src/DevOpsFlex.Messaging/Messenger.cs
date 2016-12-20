@@ -20,8 +20,6 @@
     /// </remarks>
     public class Messenger : IMessenger
     {
-        internal static readonly ISubject<IMessage> ErrorMessages = new Subject<IMessage>();
-
         internal readonly object Gate = new object();
         internal readonly string ConnectionString;
 
@@ -29,7 +27,6 @@
 
         internal readonly Dictionary<Type, IDisposable> MessageSubs = new Dictionary<Type, IDisposable>();
         internal readonly Dictionary<Type, MessageQueue> Queues = new Dictionary<Type, MessageQueue>();
-        internal readonly ErrorQueue ErrorQueue;
 
         /// <summary>
         /// Initializes a new instance of <see cref="Messenger"/>.
@@ -38,7 +35,6 @@
         public Messenger([NotNull]string connectionString)
         {
             ConnectionString = connectionString;
-            ErrorQueue = new ErrorQueue(connectionString, ErrorMessages.AsObservable());
         }
 
         /// <summary>
@@ -187,15 +183,8 @@
         /// <returns>The async <see cref="Task"/> wrapper</returns>
         internal static async Task Error(IMessage message)
         {
-            using (var scope = new TransactionScope())
-            {
-                ErrorMessages.OnNext(message);
-                await MessageQueue.BrokeredMessages[message].CompleteAsync();
-
-                scope.Complete();
-            }
-
-            MessageQueue.Release(message);
+            await MessageQueue.BrokeredMessages[message].DeadLetterAsync();
+            MessageQueue.Release(message); // don't do this inside the transaction as it's not transactional
         }
 
 
@@ -205,8 +194,6 @@
         public void Dispose()
         {
             // TODO: This guy needs to do a lot of work!
-
-            ErrorQueue.Dispose();
         }
     }
 }

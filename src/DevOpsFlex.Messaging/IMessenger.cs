@@ -30,6 +30,12 @@
         /// <param name="callback">The <see cref="Action{T}"/> delegate that will be called for each message received.</param>
         /// <exception cref="InvalidOperationException">Thrown when you attempt to setup multiple callbacks against the same <typeparamref name="T"/> parameter.</exception>
         void Receive<T>([NotNull] Action<T> callback) where T : IMessage;
+
+        /// <summary>
+        /// Stops receiving a message type by disabling the read pooling on the <see cref="MessageQueue"/>.
+        /// </summary>
+        /// <typeparam name="T">The type of the message that we are cancelling the receive on.</typeparam>
+        void CancelReceive<T>() where T : IMessage;
     }
 
     /// <summary>

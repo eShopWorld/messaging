@@ -69,7 +69,6 @@
         {
             lock (Gate)
             {
-
                 if (MessageSubs.ContainsKey(typeof(T)))
                 {
                     throw new InvalidOperationException("You already added a callback to this message type. Only one callback per type is supported.");
@@ -81,6 +80,23 @@
                     typeof(T),
                     MessagesIn.OfType<T>().Subscribe(callback));
             }
+        }
+
+        /// <summary>
+        /// Stops receiving a message type by disabling the read pooling on the <see cref="MessageQueue"/>.
+        /// </summary>
+        /// <typeparam name="T">The type of the message that we are cancelling the receive on.</typeparam>
+        public void CancelReceive<T>()
+            where T : IMessage
+        {
+            lock (Gate)
+            {
+                SetupMessageType<T>().StopReading();
+
+                MessageSubs[typeof(T)].Dispose();
+                MessageSubs.Remove(typeof(T));
+            }
+
         }
 
         /// <summary>

@@ -171,6 +171,8 @@ public class MessengerTest
                     {
                         await m.Lock();
                         // ReSharper disable once AccessToDisposedClosure
+                        msn.CancelReceive<T>();
+                        // ReSharper disable once AccessToDisposedClosure
                         await Task.Delay(TimeSpan.FromSeconds(5), ts.Token);
                         await m.Abandon();
 
@@ -180,9 +182,12 @@ public class MessengerTest
 
                 try
                 {
-                    await Task.Delay(TimeSpan.FromMinutes(2), ts.Token);
+                    await Task.Delay(TimeSpan.FromMinutes(10), ts.Token);
                 }
                 catch (TaskCanceledException) { /* soak the kill switch */ }
+
+                MessageQueue.BrokeredMessages.Should().BeEmpty();
+                MessageQueue.LockTimers.Should().BeEmpty();
             }
         }
 
@@ -217,6 +222,9 @@ public class MessengerTest
                     await Task.Delay(TimeSpan.FromMinutes(2), ts.Token);
                 }
                 catch (TaskCanceledException) { /* soak the kill switch */ }
+
+                MessageQueue.BrokeredMessages.Should().BeEmpty();
+                MessageQueue.LockTimers.Should().BeEmpty();
             }
         }
 

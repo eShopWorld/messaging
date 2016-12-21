@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using DevOpsFlex.Messaging;
 using DevOpsFlex.Messaging.Tests;
+using DevOpsFlex.Tests.Core;
 using FluentAssertions;
 using Microsoft.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
@@ -17,7 +18,7 @@ public class MessengerTest
     [Collection("Integration")]
     public class Integration
     {
-        [Theory, Trait("Category", "Integration")]
+        [Theory, IsIntegration]
         [MemberData(nameof(GetData_TestMessageTypes))]
         public async Task Test_SendCreatesTheQueue<T>(T _)
             where T : IMessage, new() // be careful with this, if the test doesn't run it's because the T validation is broken
@@ -39,7 +40,7 @@ public class MessengerTest
             }
         }
 
-        [Theory, Trait("Category", "Integration")]
+        [Theory, IsIntegration]
         [MemberData(nameof(GetData_TestMessageTypes))]
         public async Task Test_ReceiveCreatesTheQueue<T>(T _)
             where T : IMessage, new() // be careful with this, if the test doesn't run it's because the T validation is broken
@@ -58,7 +59,7 @@ public class MessengerTest
             }
         }
 
-        [Theory, Trait("Category", "Integration")]
+        [Theory, IsIntegration]
         [MemberData(nameof(GetData_TestMessageTypes))]
         public async Task Test_SendingRandomMessages<T>(T _)
             where T : IMessage, new() // be careful with this, if the test doesn't run it's because the T validation is broken
@@ -90,7 +91,7 @@ public class MessengerTest
             }
         }
 
-        [Theory, Trait("Category", "Integration")]
+        [Theory, IsIntegration]
         [MemberData(nameof(GetData_TestMessageTypes))]
         public async Task Test_ReceivingRandomMessages<T>(T _)
             where T : IMessage, new() // be careful with this, if the test doesn't run it's because the T validation is broken
@@ -132,7 +133,7 @@ public class MessengerTest
             }
         }
 
-        [Theory, Trait("Category", "Integration")]
+        [Theory, IsIntegration]
         [MemberData(nameof(GetData_TestMessageTypes))]
         public async Task Test_LockMessage_ForFiveMinutes<T>(T _)
             where T : IMessage, new() // be careful with this, if the test doesn't run it's because the T validation is broken
@@ -162,7 +163,7 @@ public class MessengerTest
             }
         }
 
-        [Theory, Trait("Category", "Integration")]
+        [Theory, IsIntegration]
         [MemberData(nameof(GetData_TestMessageTypes))]
         public async Task Test_LockAbandon_MessageFlow<T>(T _)
             where T : IMessage, new() // be careful with this, if the test doesn't run it's because the T validation is broken
@@ -200,7 +201,7 @@ public class MessengerTest
             }
         }
 
-        [Theory, Trait("Category", "Integration")]
+        [Theory, IsIntegration]
         [MemberData(nameof(GetData_TestMessageTypes))]
         public async Task Test_LockComplete_MessageFlow<T>(T _)
             where T : IMessage, new() // be careful with this, if the test doesn't run it's because the T validation is broken
@@ -237,7 +238,7 @@ public class MessengerTest
             }
         }
 
-        [Theory, Trait("Category", "Integration")]
+        [Theory, IsIntegration]
         [MemberData(nameof(GetData_TestMessageTypes))]
         public async Task Test_LockError_MessageFlow<T>(T _)
             where T : IMessage, new() // be careful with this, if the test doesn't run it's because the T validation is broken
@@ -307,6 +308,8 @@ public static class MessengerTestExtensions
 
 namespace DevOpsFlex.Messaging.Tests
 {
+    using DevOpsFlex.Tests.Core;
+
     /// <summary>
     /// A convenient way to generate random Lorem text <see cref="IMessage"/>.
     /// </summary>

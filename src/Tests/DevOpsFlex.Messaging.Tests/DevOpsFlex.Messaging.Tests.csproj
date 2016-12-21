@@ -42,6 +42,10 @@
       <HintPath>..\..\..\packages\Castle.Core.3.3.3\lib\net45\Castle.Core.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="DevOpsFlex.Tests.Core, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\..\packages\DevOpsFlex.Tests.Core.1.0.5\lib\net462\DevOpsFlex.Tests.Core.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="FluentAssertions">
       <HintPath>..\..\..\packages\FluentAssertions.4.18.0\lib\net45\FluentAssertions.dll</HintPath>
       <Private>True</Private>
@@ -121,10 +125,6 @@
   </Choose>
   <ItemGroup>
     <Compile Include="ITestMessage.cs" />
-    <Compile Include="Lorem\EnumerableExtensions.cs" />
-    <Compile Include="Lorem\Lorem.cs" />
-    <Compile Include="Lorem\NumberExtensions.cs" />
-    <Compile Include="Lorem\StringExtensions.cs" />
     <Compile Include="MessengerTest.cs" />
     <Compile Include="NamespaceHelper.cs" />
     <Compile Include="NamespaceManagerExtensions.cs" />
@@ -139,6 +139,9 @@
       <Project>{70bc70a5-c623-480e-bb68-982c46011441}</Project>
       <Name>DevOpsFlex.Messaging</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Analyzer Include="..\..\..\packages\DevOpsFlex.Tests.Core.Analyzers.1.0.1\analyzers\dotnet\cs\DevOpsFlex.Tests.Core.Analyzers.dll" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">

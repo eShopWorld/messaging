@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using DevOpsFlex.Messaging;
 using DevOpsFlex.Messaging.Tests;
+using DevOpsFlex.Tests.Core;
 using FluentAssertions;
 using JetBrains.dotMemoryUnit;
 using JetBrains.Profiler.Windows.Api;
@@ -17,7 +18,7 @@ public class MessengerProfiler
     /// This is a dotTrace test, so it requires R# + dotTrace and it needs to be run
     /// through the R# test runner using the specific "profile" option.
     /// </remarks>
-    [Fact, Trait("Category", "CPUProfiler")]
+    [Fact, IsProfilerCpu]
     public async Task CPUProfile_SendBurst_100_TestMessage()
     {
         MessageQueue.LockTimers.Release();
@@ -31,7 +32,7 @@ public class MessengerProfiler
     /// This is a dotTrace test, so it requires R# + dotTrace and it needs to be run
     /// through the R# test runner using the specific "profile" option.
     /// </remarks>
-    [Fact, Trait("Category", "CPUProfiler")]
+    [Fact, IsProfilerCpu]
     public async Task CPUProfile_SendBurst_1000_TestMessage()
     {
         MessageQueue.LockTimers.Release();
@@ -45,7 +46,7 @@ public class MessengerProfiler
     /// This is a dotMemory test, so it requires R# + dotMemory and it needs to be run
     /// through the R# test runner using the specific "run under dotMemory Unit" option or it will throw.
     /// </remarks>
-    [Fact, Trait("Category", "MemoryProfiler")]
+    [Fact, IsProfilerMemory]
     public void MemoryProfile_SendBurst_100_NoMessageLeaks()
     {
         const int count = 100;

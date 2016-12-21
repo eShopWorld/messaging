@@ -7,7 +7,6 @@
     using System.Reactive.Subjects;
     using System.Threading;
     using System.Threading.Tasks;
-    using System.Transactions;
     using JetBrains.Annotations;
 
     /// <summary>
@@ -25,8 +24,8 @@
 
         internal readonly ISubject<IMessage> MessagesIn = new Subject<IMessage>();
 
-        internal readonly Dictionary<Type, IDisposable> MessageSubs = new Dictionary<Type, IDisposable>();
-        internal readonly Dictionary<Type, MessageQueue> Queues = new Dictionary<Type, MessageQueue>();
+        internal Dictionary<Type, IDisposable> MessageSubs = new Dictionary<Type, IDisposable>();
+        internal Dictionary<Type, MessageQueue> Queues = new Dictionary<Type, MessageQueue>();
 
         /// <summary>
         /// Initializes a new instance of <see cref="Messenger"/>.
@@ -193,7 +192,11 @@
         /// </summary>
         public void Dispose()
         {
-            // TODO: This guy needs to do a lot of work!
+            MessageSubs.Release();
+            MessageSubs = null;
+
+            Queues.Release();
+            Queues = null;
         }
     }
 }

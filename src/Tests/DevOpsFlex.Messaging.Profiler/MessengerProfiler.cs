@@ -20,6 +20,9 @@ public class MessengerProfiler
     [Fact, Trait("Category", "CPUProfiler")]
     public async Task CPUProfile_SendBurst_100_TestMessage()
     {
+        MessageQueue.LockTimers.Release();
+        MessageQueue.BrokeredMessages.Release();
+
         InitJbProfilers();
         await SendBurst(100);
     }
@@ -31,6 +34,9 @@ public class MessengerProfiler
     [Fact, Trait("Category", "CPUProfiler")]
     public async Task CPUProfile_SendBurst_1000_TestMessage()
     {
+        MessageQueue.LockTimers.Release();
+        MessageQueue.BrokeredMessages.Release();
+
         InitJbProfilers();
         await SendBurst(1000);
     }
@@ -43,6 +49,9 @@ public class MessengerProfiler
     public void MemoryProfile_SendBurst_100_NoMessageLeaks()
     {
         const int count = 100;
+        MessageQueue.LockTimers.Release();
+        MessageQueue.BrokeredMessages.Release();
+
         SendBurstMemoryIsolation(count).Wait();
         GC.Collect(2, GCCollectionMode.Forced);
 

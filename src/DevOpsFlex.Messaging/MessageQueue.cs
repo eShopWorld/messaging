@@ -2,7 +2,6 @@
 {
     using System;
     using System.Collections.Generic;
-    using System.Diagnostics;
     using System.Runtime.Serialization;
     using System.Threading;
     using System.Threading.Tasks;
@@ -107,20 +106,20 @@
     /// </summary>
     internal class MessageQueue : IDisposable
     {
+        internal static readonly object Gate = new object();
+
         internal const int LockInSeconds = 60;
-
-        internal static readonly IDictionary<IMessage, BrokeredMessage> BrokeredMessages =
-            new Dictionary<IMessage, BrokeredMessage>(ObjectReferenceEqualityComparer<IMessage>.Default);
-
-        internal static readonly IDictionary<IMessage, Timer> LockTimers =
-            new Dictionary<IMessage, Timer>(ObjectReferenceEqualityComparer<IMessage>.Default);
-
         internal static int LockTickInSeconds = (int)Math.Floor(LockInSeconds * 0.6);
 
-        internal static readonly object Gate = new object();
-        protected readonly QueueClient QueueClient;
+        internal static IDictionary<IMessage, BrokeredMessage> BrokeredMessages =
+            new Dictionary<IMessage, BrokeredMessage>(ObjectReferenceEqualityComparer<IMessage>.Default);
+
+        internal static IDictionary<IMessage, Timer> LockTimers =
+            new Dictionary<IMessage, Timer>(ObjectReferenceEqualityComparer<IMessage>.Default);
 
         internal int BatchSize = 10;
+
+        protected readonly QueueClient QueueClient;
 
         /// <summary>
         /// Initializes a new instance of <see cref="MessageQueue"/>.

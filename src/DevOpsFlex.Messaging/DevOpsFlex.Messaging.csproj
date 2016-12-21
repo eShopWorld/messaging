@@ -75,6 +75,7 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DictionaryExtensions.cs" />
     <Compile Include="ObjectReferenceEqualityComparer.cs" />
     <Compile Include="IMessage.cs" />
     <Compile Include="IMessenger.cs" />

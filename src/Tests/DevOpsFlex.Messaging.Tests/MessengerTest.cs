@@ -26,6 +26,8 @@ public class MessengerTest
 
             var nsm = NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString());
             await nsm.ScorchNamespace();
+            MessageQueue.LockTimers.Release();
+            MessageQueue.BrokeredMessages.Release();
 
             using (IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString()))
             {
@@ -46,6 +48,8 @@ public class MessengerTest
 
             var nsm = NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString());
             await nsm.ScorchNamespace();
+            MessageQueue.LockTimers.Release();
+            MessageQueue.BrokeredMessages.Release();
 
             using (IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString()))
             {
@@ -63,6 +67,8 @@ public class MessengerTest
 
             var sendCount = new Random().Next(1, 10);
             await NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString()).ScorchNamespace();
+            MessageQueue.LockTimers.Release();
+            MessageQueue.BrokeredMessages.Release();
 
             var messages = new List<T>();
             for (var i = 0; i < sendCount; i++) { messages.Add(new T()); }
@@ -93,6 +99,8 @@ public class MessengerTest
 
             var receiveCount = new Random().Next(1, 10);
             await NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString()).ScorchNamespace();
+            MessageQueue.LockTimers.Release();
+            MessageQueue.BrokeredMessages.Release();
 
             var rMessages = new List<T>();
             var messages = new List<T>();
@@ -132,6 +140,8 @@ public class MessengerTest
             _.CheckInlineType(); // inline data check
 
             await NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString()).ScorchNamespace();
+            MessageQueue.LockTimers.Release();
+            MessageQueue.BrokeredMessages.Release();
 
             using (IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString()))
             {
@@ -160,6 +170,8 @@ public class MessengerTest
             _.CheckInlineType(); // inline data check
 
             await NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString()).ScorchNamespace();
+            MessageQueue.LockTimers.Release();
+            MessageQueue.BrokeredMessages.Release();
 
             using (var ts = new CancellationTokenSource())
             using (IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString()))
@@ -196,6 +208,8 @@ public class MessengerTest
             _.CheckInlineType(); // inline data check
 
             await NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString()).ScorchNamespace();
+            MessageQueue.LockTimers.Release();
+            MessageQueue.BrokeredMessages.Release();
 
             using (var ts = new CancellationTokenSource())
             using (IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString()))
@@ -231,6 +245,8 @@ public class MessengerTest
             _.CheckInlineType(); // inline data check
 
             await NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString()).ScorchNamespace();
+            MessageQueue.LockTimers.Release();
+            MessageQueue.BrokeredMessages.Release();
 
             using (var ts = new CancellationTokenSource())
             using (IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString()))

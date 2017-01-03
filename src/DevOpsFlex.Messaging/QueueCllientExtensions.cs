@@ -23,9 +23,9 @@
         {
             var nsm = NamespaceManager.CreateFromConnectionString(connectionString);
 
-            if (!await nsm.QueueExistsAsync(entityPath))
+            if (!await nsm.QueueExistsAsync(entityPath).ConfigureAwait(false))
             {
-                await nsm.CreateQueueAsync(entityPath); // TODO: MISSING QUEUE CREATION PROPERTIES
+                await nsm.CreateQueueAsync(entityPath).ConfigureAwait(false); // TODO: MISSING QUEUE CREATION PROPERTIES
             }
 
             return QueueClient.CreateFromConnectionString(connectionString, entityPath, ReceiveMode.PeekLock);

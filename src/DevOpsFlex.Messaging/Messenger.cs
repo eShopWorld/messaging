@@ -49,7 +49,7 @@
                 SetupMessageType<T>();
             }
 
-            await ((MessageQueue<T>)Queues[typeof(T)]).Send(message);
+            await ((MessageQueue<T>)Queues[typeof(T)]).Send(message).ConfigureAwait(false);
         }
 
         /// <summary>

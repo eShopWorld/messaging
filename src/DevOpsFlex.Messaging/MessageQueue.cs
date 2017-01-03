@@ -60,9 +60,9 @@
         internal async Task Send([NotNull]IMessage message)
         {
 #if DEBUG
-            await QueueClient.SendAsync(new BrokeredMessage(message, new DataContractSerializer(typeof(T))));
+            await QueueClient.SendAsync(new BrokeredMessage(message, new DataContractSerializer(typeof(T)))).ConfigureAwait(false);
 #else
-            await QueueClient.SendAsync(new BrokeredMessage(message));
+            await QueueClient.SendAsync(new BrokeredMessage(message)).ConfigureAwait(false);
 #endif
         }
 

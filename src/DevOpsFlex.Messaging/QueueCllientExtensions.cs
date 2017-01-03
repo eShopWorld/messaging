@@ -23,7 +23,7 @@
         {
             var nsm = NamespaceManager.CreateFromConnectionString(connectionString);
 
-            if (!await nsm.QueueExistsAsync(entityPath))
+            if (!await nsm.QueueExistsAsync(entityPath).ConfigureAwait(false))
             {
                 await nsm.CreateQueueAsync(entityPath); // TODO: MISSING QUEUE CREATION PROPERTIES
             }

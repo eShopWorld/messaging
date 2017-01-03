@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata>
     <id>DevOpsFlex.Messaging</id>
-    <version>1.0.5-rc</version>
+    <version>1.0.6-rc</version>
     <title>DevOpsFlex.Messaging</title>
     <authors>David Rodrigues</authors>
     <owners>eShopWorld</owners>

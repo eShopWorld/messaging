@@ -144,9 +144,9 @@
             MessageQueue.LockTimers.Add(
                 message,
                 new Timer(
-                    _ =>
+                    async _ =>
                     {
-                        bMessage.RenewLockAsync();
+                        await bMessage.RenewLockAsync().ConfigureAwait(false);
                     },
                     null,
                     TimeSpan.FromSeconds(MessageQueue.LockTickInSeconds),
@@ -160,7 +160,7 @@
         /// <returns>The async <see cref="Task"/> wrapper</returns>
         internal static async Task Complete(IMessage message)
         {
-            await MessageQueue.BrokeredMessages[message].CompleteAsync();
+            await MessageQueue.BrokeredMessages[message].CompleteAsync().ConfigureAwait(false);
             MessageQueue.Release(message);
         }
 
@@ -171,7 +171,7 @@
         /// <returns>The async <see cref="Task"/> wrapper</returns>
         internal static async Task Abandon(IMessage message)
         {
-            await MessageQueue.BrokeredMessages[message].AbandonAsync();
+            await MessageQueue.BrokeredMessages[message].AbandonAsync().ConfigureAwait(false);
             MessageQueue.Release(message);
         }
 
@@ -182,7 +182,7 @@
         /// <returns>The async <see cref="Task"/> wrapper</returns>
         internal static async Task Error(IMessage message)
         {
-            await MessageQueue.BrokeredMessages[message].DeadLetterAsync();
+            await MessageQueue.BrokeredMessages[message].DeadLetterAsync().ConfigureAwait(false);
             MessageQueue.Release(message); // don't do this inside the transaction as it's not transactional
         }
 

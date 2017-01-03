@@ -37,7 +37,7 @@
             if (ReadTimer != null) return;
 
             ReadTimer = new Timer(
-                async _ => await Read(_),
+                async _ => await Read(_).ConfigureAwait(false),
                 null,
                 TimeSpan.FromSeconds(1),
                 TimeSpan.FromSeconds(1)); // TODO: CREATE A DYNAMIC POOLING HEURISTIC
@@ -73,7 +73,7 @@
         /// <returns>The async <see cref="Task"/> wrapper.</returns>
         internal async Task Read([CanBeNull]object _)
         {
-            var messages = await QueueClient.ReceiveBatchAsync(BatchSize);
+            var messages = await QueueClient.ReceiveBatchAsync(BatchSize).ConfigureAwait(false);
 
             foreach (var message in messages)
             {

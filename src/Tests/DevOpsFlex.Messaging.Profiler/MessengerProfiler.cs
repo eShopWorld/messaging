@@ -10,10 +10,19 @@ using JetBrains.Profiler.Windows.Api;
 using Microsoft.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
 using Xunit;
+using Xunit.Abstractions;
 
 // ReSharper disable once CheckNamespace
 public class MessengerProfiler
 {
+    private readonly ITestOutputHelper _output;
+
+    public MessengerProfiler(ITestOutputHelper output)
+    {
+        _output = output;
+        DotMemoryUnitTestOutput.SetOutputMethod(s => _output.WriteLine(s));
+    }
+
     /// <remarks>
     /// This is a dotTrace test, so it requires R# + dotTrace and it needs to be run
     /// through the R# test runner using the specific "profile" option.

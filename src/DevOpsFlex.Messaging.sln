@@ -15,7 +15,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		..\README.md = ..\README.md
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DevOpsFlex.Messaging.Profiler", "Tests\DevOpsFlex.Messaging.Profiler\DevOpsFlex.Messaging.Profiler.csproj", "{9D42534D-5B32-4D1B-8412-D2C3F97F364D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DevOpsFlex.Messaging.Tests.Profiler", "Tests\DevOpsFlex.Messaging.Tests.Profiler\DevOpsFlex.Messaging.Tests.Profiler.csproj", "{9D42534D-5B32-4D1B-8412-D2C3F97F364D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

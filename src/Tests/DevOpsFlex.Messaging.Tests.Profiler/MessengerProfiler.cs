@@ -15,12 +15,9 @@ using Xunit.Abstractions;
 // ReSharper disable once CheckNamespace
 public class MessengerProfiler
 {
-    private readonly ITestOutputHelper _output;
-
     public MessengerProfiler(ITestOutputHelper output)
     {
-        _output = output;
-        DotMemoryUnitTestOutput.SetOutputMethod(s => _output.WriteLine(s));
+        DotMemoryUnitTestOutput.SetOutputMethod(output.WriteLine);
     }
 
     /// <remarks>

@@ -25,7 +25,7 @@
 
             if (!await nsm.QueueExistsAsync(entityPath).ConfigureAwait(false))
             {
-                await nsm.CreateQueueAsync(entityPath).ConfigureAwait(false); // TODO: MISSING QUEUE CREATION PROPERTIES
+                await nsm.CreateQueueAsync(entityPath).ConfigureAwait(false);
             }
 
             return QueueClient.CreateFromConnectionString(connectionString, entityPath, ReceiveMode.PeekLock);

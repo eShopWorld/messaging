@@ -40,7 +40,7 @@
                 async _ => await Read(_).ConfigureAwait(false),
                 null,
                 TimeSpan.FromSeconds(1),
-                TimeSpan.FromSeconds(1)); // TODO: CREATE A DYNAMIC POOLING HEURISTIC
+                TimeSpan.FromSeconds(1));
         }
 
         /// <summary>
@@ -109,12 +109,12 @@
         internal static readonly object Gate = new object();
 
         internal const int LockInSeconds = 60;
-        internal static int LockTickInSeconds = (int)Math.Floor(LockInSeconds * 0.6);
+        internal static readonly int LockTickInSeconds = (int)Math.Floor(LockInSeconds * 0.6);
 
-        internal static IDictionary<IMessage, BrokeredMessage> BrokeredMessages =
+        internal static readonly IDictionary<IMessage, BrokeredMessage> BrokeredMessages =
             new Dictionary<IMessage, BrokeredMessage>(ObjectReferenceEqualityComparer<IMessage>.Default);
 
-        internal static IDictionary<IMessage, Timer> LockTimers =
+        internal static readonly IDictionary<IMessage, Timer> LockTimers =
             new Dictionary<IMessage, Timer>(ObjectReferenceEqualityComparer<IMessage>.Default);
 
         internal int BatchSize = 10;

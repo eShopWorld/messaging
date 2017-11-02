@@ -51,7 +51,7 @@
             var queueName = type.FullName;
             if (Debugger.IsAttached)
             {
-                queueName += $"-{Environment.UserName}";
+                queueName += $"-{Environment.UserName.Replace("$", "")}";
             }
 
             return queueName;

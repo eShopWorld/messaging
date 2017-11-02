@@ -47,17 +47,16 @@ public class TestMessage : IMessage
 
 The simplest way to do it is by consuming IMessenger and calling `Receive`:
 ```c#
-using (IMessenger msn = new Messenger("SB CONNECTION STRING"))
+IMessenger msn = new Messenger("SB CONNECTION STRING"))
+
+msn.Receive<TestMessage>(async m =>
 {
-    msn.Receive<TestMessage>(async m =>
-    {
-        await m.Lock();
+    await m.Lock();
 
-        // do something with it
+    // do something with it
 
-        await m.Complete();
-    });
-}
+    await m.Complete();
+});
 ```
 
 You can call `Lock`, `Abandon`, `Complete` and `Error` on a `IMessage`. They are written as `IMessage`

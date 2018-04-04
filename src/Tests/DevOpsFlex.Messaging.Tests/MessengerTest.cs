@@ -317,17 +317,24 @@ namespace DevOpsFlex.Messaging.Tests
     {
         private static readonly Random Rng = new Random();
 
-        public string Name { get; set; }
+        public string Name { get; }
 
-        public string Stuff { get; set; }
+        public string Stuff { get; }
 
-        public float Price { get; set; }
+        public float Price { get; }
 
         public TestMessage()
         {
             Name = Lorem.GetSentence();
             Stuff = Lorem.GetParagraph();
             Price = Rng.Next(100);
+        }
+
+        public TestMessage(string name, string stuff, float price)
+        {
+            Name = name;
+            Stuff = stuff;
+            Price = price;
         }
 
         public bool Equals(TestMessage other)

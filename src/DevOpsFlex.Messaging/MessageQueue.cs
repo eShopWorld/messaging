@@ -153,7 +153,6 @@ I suggest you reduce the size of the namespace '{messageType.Namespace}'.");
             }
 
             // drop the lock to improve racing Tasks
-
             lock (Gate)
             {
                 // check for a lock renewal timer and release it if it exists

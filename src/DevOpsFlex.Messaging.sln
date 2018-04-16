@@ -1,10 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio 15
+VisualStudioVersion = 15.0.27428.2037
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{3A90463E-904A-4699-8769-EF8C47127DDC}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DevOpsFlex.Messaging", "DevOpsFlex.Messaging\DevOpsFlex.Messaging.csproj", "{70BC70A5-C623-480E-BB68-982C46011441}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DevOpsFlex.Messaging.Tests", "Tests\DevOpsFlex.Messaging.Tests\DevOpsFlex.Messaging.Tests.csproj", "{966B329C-E89E-44C2-AFD0-476944307483}"
@@ -53,8 +51,7 @@ Global
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{966B329C-E89E-44C2-AFD0-476944307483} = {3A90463E-904A-4699-8769-EF8C47127DDC}
-		{9D42534D-5B32-4D1B-8412-D2C3F97F364D} = {3A90463E-904A-4699-8769-EF8C47127DDC}
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0486A538-0099-4EEC-B48D-177FAB22B6AE}
 	EndGlobalSection
 EndGlobal

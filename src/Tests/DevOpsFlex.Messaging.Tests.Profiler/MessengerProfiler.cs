@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using DevOpsFlex.Messaging;
 using DevOpsFlex.Messaging.Tests;
-using DevOpsFlex.Tests.Core;
+using Eshopworld.Tests.Core;
 using FluentAssertions;
 using JetBrains.dotMemoryUnit;
 using JetBrains.Profiler.Windows.Api;

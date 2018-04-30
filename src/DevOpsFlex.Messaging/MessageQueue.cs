@@ -128,11 +128,11 @@
         /// <param name="messageType">The fully strongly typed <see cref="Type"/> of the message we want to create the queue for.</param>
         internal MessageQueue([NotNull]string connectionString, [NotNull]Type messageType)
         {
-            if (messageType.FullName.Length > 260) // SB quota: Entity path max length
+            if (messageType.FullName?.Length > 260) // SB quota: Entity path max length
             {
                 throw new InvalidOperationException(
 $@"You can't create queues for the type {messageType.FullName} because the full name (namespace + name) exceeds 260 characters.
-I suggest you reduce the size of the namespace '{messageType.Namespace}'.");
+I suggest you reduce the size of the namespace: '{messageType.Namespace}'.");
             }
 
             QueueClient = QueueCllientExtensions.CreateIfNotExists(connectionString, messageType.GetQueueName()).Result; // unwrapp

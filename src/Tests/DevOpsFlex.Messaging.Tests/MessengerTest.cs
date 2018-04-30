@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using DevOpsFlex.Messaging;
 using DevOpsFlex.Messaging.Tests;
-using DevOpsFlex.Tests.Core;
+using Eshopworld.Tests.Core;
 using FluentAssertions;
 using Microsoft.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
@@ -274,7 +274,7 @@ public class MessengerTest
                 var qClient = QueueClient.CreateFromConnectionString(NamespaceHelper.GetConnectionString(), QueueClient.FormatDeadLetterPath(typeof(T).GetQueueName()));
                 var rMessage = (await qClient.ReadBatchAsync<T>(1)).First();
 
-                rMessage.ShouldBeEquivalentTo(message);
+                rMessage.Should().BeEquivalentTo(message);
 
                 MessageQueue.BrokeredMessages.Should().BeEmpty();
                 MessageQueue.LockTimers.Should().BeEmpty();
@@ -308,8 +308,6 @@ public static class MessengerTestExtensions
 
 namespace DevOpsFlex.Messaging.Tests
 {
-    using DevOpsFlex.Tests.Core;
-
     /// <summary>
     /// A convenient way to generate random Lorem text <see cref="IMessage"/>.
     /// </summary>
@@ -339,7 +337,7 @@ namespace DevOpsFlex.Messaging.Tests
 
         public bool Equals(TestMessage other)
         {
-            if (ReferenceEquals(null, other)) return false;
+            if (other is null) return false;
             if (ReferenceEquals(this, other)) return true;
             return string.Equals(Name, other.Name) &&
                    string.Equals(Stuff, other.Stuff) &&
@@ -348,10 +346,9 @@ namespace DevOpsFlex.Messaging.Tests
 
         public override bool Equals(object obj)
         {
-            if (ReferenceEquals(null, obj)) return false;
+            if (obj is null) return false;
             if (ReferenceEquals(this, obj)) return true;
-            if (obj.GetType() != GetType()) return false;
-            return Equals((TestMessage)obj);
+            return obj.GetType() == GetType() && Equals((TestMessage)obj);
         }
 
         public override int GetHashCode()

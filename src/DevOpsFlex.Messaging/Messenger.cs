@@ -7,6 +7,7 @@
     using System.Reactive.Subjects;
     using System.Threading;
     using System.Threading.Tasks;
+    using Eshopworld.Core;
     using JetBrains.Annotations;
 
     /// <summary>
@@ -17,10 +18,12 @@
     /// Some checks are only valuable if you have a unique messenger class in your application. If you set it up as transient
     /// then some checks will only run against a specific instance and won't really validate the entire behaviour.
     /// </remarks>
-    public class Messenger : IMessenger
+    public class Messenger : IMessenger, IReactiveMessenger
     {
         internal readonly object Gate = new object();
         internal readonly string ConnectionString;
+        internal readonly string SubscriptionId;
+        internal readonly IAADContext AadContext;
 
         internal readonly ISubject<IMessage> MessagesIn = new Subject<IMessage>();
 
@@ -34,6 +37,19 @@
         public Messenger([NotNull]string connectionString)
         {
             ConnectionString = connectionString;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="Messenger"/>.
+        /// </summary>
+        /// <param name="connectionString">The Azure Service Bus connection string.</param>
+        /// <param name="subscriptionId">The subscription ID where the service bus namespace lives.</param>
+        /// <param name="aadContext">The DevOps <see cref="IAADContext"/> that will enable building the credentials for the fluent MAML.</param>
+        public Messenger([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IAADContext aadContext)
+        {
+            ConnectionString = connectionString;
+            SubscriptionId = subscriptionId;
+            AadContext = aadContext;
         }
 
         /// <summary>
@@ -121,7 +137,7 @@
             {
                 if (!Queues.ContainsKey(typeof(T)))
                 {
-                    var queue = new MessageQueue<T>(ConnectionString, MessagesIn.AsObserver());
+                    var queue = new MessageQueue<T>(ConnectionString, AadContext.AuthFilePath, SubscriptionId, MessagesIn.AsObserver());
                     Queues.Add(typeof(T), queue);
                 }
             }

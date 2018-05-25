@@ -2,10 +2,15 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Runtime.Serialization;
+    using System.Text.RegularExpressions;
     using System.Threading;
     using System.Threading.Tasks;
     using JetBrains.Annotations;
+    using Microsoft.Azure.Management.Fluent;
+    using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
+    using Microsoft.Azure.Management.ServiceBus.Fluent;
     using Microsoft.ServiceBus.Messaging;
 
     /// <summary>
@@ -25,6 +30,12 @@
         /// <param name="messagesIn">The <see cref="IObserver{IMessage}"/> used to push received messages into the pipeline.</param>
         public MessageQueue([NotNull]string connectionString, [NotNull]IObserver<IMessage> messagesIn)
             : base(connectionString, typeof(T))
+        {
+            MessagesIn = messagesIn;
+        }
+
+        public MessageQueue([NotNull]string connectionString, [NotNull]string authFileLocation, [NotNull]string subscriptionId, [NotNull]IObserver<IMessage> messagesIn)
+            : base(connectionString, authFileLocation, subscriptionId, typeof(T))
         {
             MessagesIn = messagesIn;
         }
@@ -106,19 +117,17 @@
     /// </summary>
     internal class MessageQueue : IDisposable
     {
+        internal const int LockInSeconds = 60; // TODO: CHANGE THIS STUFF NOW THAT WE CAN EASILY POKE THE IQUEUE !!!
+
         internal static readonly object Gate = new object();
-
-        internal const int LockInSeconds = 60;
         internal static readonly int LockTickInSeconds = (int)Math.Floor(LockInSeconds * 0.6);
+        internal static readonly IDictionary<IMessage, BrokeredMessage> BrokeredMessages = new Dictionary<IMessage, BrokeredMessage>(ObjectReferenceEqualityComparer<IMessage>.Default);
+        internal static readonly IDictionary<IMessage, Timer> LockTimers = new Dictionary<IMessage, Timer>(ObjectReferenceEqualityComparer<IMessage>.Default);
+        internal static IServiceBusNamespace AzureServiceBusNamespace;
 
-        internal static readonly IDictionary<IMessage, BrokeredMessage> BrokeredMessages =
-            new Dictionary<IMessage, BrokeredMessage>(ObjectReferenceEqualityComparer<IMessage>.Default);
+        internal readonly IQueue AzureQueue;
 
-        internal static readonly IDictionary<IMessage, Timer> LockTimers =
-            new Dictionary<IMessage, Timer>(ObjectReferenceEqualityComparer<IMessage>.Default);
-
-        internal int BatchSize = 10;
-
+        internal int BatchSize = 10; // TODO: EXPOSING THIS THROUGH API IS PART OF THE WORKLOAD
         protected readonly QueueClient QueueClient;
 
         /// <summary>
@@ -138,6 +147,34 @@ I suggest you reduce the size of the namespace: '{messageType.Namespace}'.");
             QueueClient = QueueCllientExtensions.CreateIfNotExists(connectionString, messageType.GetQueueName()).Result; // unwrapp
         }
 
+        internal MessageQueue([NotNull]string connectionString, [NotNull]string authFileLocation, [NotNull]string subscriptionId, [NotNull]Type messageType)
+        {
+            var namespaceName = Regex.Match(connectionString, @"Endpoint=sb:\/\/([^.]*)", RegexOptions.IgnoreCase).Groups[1].Value;
+
+            if (messageType.FullName?.Length > 260) // SB quota: Entity path max length
+            {
+                throw new InvalidOperationException(
+$@"You can't create queues for the type {messageType.FullName} because the full name (namespace + name) exceeds 260 characters.
+I suggest you reduce the size of the namespace: '{messageType.Namespace}'.");
+            }
+
+            var creds = new AzureCredentialsFactory().FromFile(authFileLocation);
+            if (AzureServiceBusNamespace == null)
+            {
+                AzureServiceBusNamespace = Azure.Authenticate(creds)
+                                                .WithSubscription(subscriptionId)
+                                                .ServiceBusNamespaces.List()
+                                                .SingleOrDefault(n => n.Name == namespaceName);
+
+                if (AzureServiceBusNamespace == null)
+                {
+                    throw new InvalidOperationException($"Couldn't find the service bus namespace {namespaceName} in the subscription with ID {subscriptionId}");
+                }
+            }
+
+            AzureQueue = AzureServiceBusNamespace.CreateQueueIfNotExists(messageType.FullName?.ToLower()).Result;
+        }
+
         /// <summary>
         /// Releases a message from the Queue by releasing all the specific message resources like lock
         /// renewal timers.
@@ -150,11 +187,7 @@ I suggest you reduce the size of the namespace: '{messageType.Namespace}'.");
             {
                 BrokeredMessages[message]?.Dispose();
                 BrokeredMessages.Remove(message);
-            }
 
-            // drop the lock to improve racing Tasks
-            lock (Gate)
-            {
                 // check for a lock renewal timer and release it if it exists
                 if (LockTimers.ContainsKey(message))
                 {

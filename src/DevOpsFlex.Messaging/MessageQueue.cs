@@ -9,8 +9,12 @@
     using System.Threading.Tasks;
     using JetBrains.Annotations;
     using Microsoft.Azure.Management.Fluent;
+    using Microsoft.Azure.Management.ResourceManager.Fluent;
     using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
+    using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
     using Microsoft.Azure.Management.ServiceBus.Fluent;
+    using Microsoft.Azure.Services.AppAuthentication;
+    using Microsoft.Rest;
     using Microsoft.ServiceBus.Messaging;
 
     /// <summary>
@@ -34,8 +38,8 @@
             MessagesIn = messagesIn;
         }
 
-        public MessageQueue([NotNull]string connectionString, [NotNull]string authFileLocation, [NotNull]string subscriptionId, [NotNull]IObserver<IMessage> messagesIn)
-            : base(connectionString, authFileLocation, subscriptionId, typeof(T))
+        public MessageQueue([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IObserver<IMessage> messagesIn)
+            : base(connectionString, subscriptionId, typeof(T))
         {
             MessagesIn = messagesIn;
         }
@@ -147,7 +151,7 @@ I suggest you reduce the size of the namespace: '{messageType.Namespace}'.");
             QueueClient = QueueCllientExtensions.CreateIfNotExists(connectionString, messageType.GetQueueName()).Result; // unwrapp
         }
 
-        internal MessageQueue([NotNull]string connectionString, [NotNull]string authFileLocation, [NotNull]string subscriptionId, [NotNull]Type messageType)
+        internal MessageQueue([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]Type messageType)
         {
             var namespaceName = Regex.Match(connectionString, @"Endpoint=sb:\/\/([^.]*)", RegexOptions.IgnoreCase).Groups[1].Value;
 
@@ -158,10 +162,18 @@ $@"You can't create queues for the type {messageType.FullName} because the full 
 I suggest you reduce the size of the namespace: '{messageType.Namespace}'.");
             }
 
-            var creds = new AzureCredentialsFactory().FromFile(authFileLocation);
             if (AzureServiceBusNamespace == null)
             {
-                AzureServiceBusNamespace = Azure.Authenticate(creds)
+                var token = new AzureServiceTokenProvider().GetAccessTokenAsync("https://management.core.windows.net/", string.Empty).Result;
+                var tokenCredentials = new TokenCredentials(token);
+
+                var client = RestClient.Configure()
+                                       .WithEnvironment(AzureEnvironment.AzureGlobalCloud)
+                                       .WithLogLevel(HttpLoggingDelegatingHandler.Level.Basic)
+                                       .WithCredentials(new AzureCredentials(tokenCredentials, tokenCredentials, string.Empty, AzureEnvironment.AzureGlobalCloud))
+                                       .Build();
+
+                AzureServiceBusNamespace = Azure.Authenticate(client, string.Empty)
                                                 .WithSubscription(subscriptionId)
                                                 .ServiceBusNamespaces.List()
                                                 .SingleOrDefault(n => n.Name == namespaceName);

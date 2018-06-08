@@ -23,7 +23,6 @@
         internal readonly object Gate = new object();
         internal readonly string ConnectionString;
         internal readonly string SubscriptionId;
-        internal readonly IAADContext AadContext;
 
         internal readonly ISubject<IMessage> MessagesIn = new Subject<IMessage>();
 
@@ -44,12 +43,10 @@
         /// </summary>
         /// <param name="connectionString">The Azure Service Bus connection string.</param>
         /// <param name="subscriptionId">The subscription ID where the service bus namespace lives.</param>
-        /// <param name="aadContext">The DevOps <see cref="IAADContext"/> that will enable building the credentials for the fluent MAML.</param>
-        public Messenger([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IAADContext aadContext)
+        public Messenger([NotNull]string connectionString, [NotNull]string subscriptionId)
         {
             ConnectionString = connectionString;
             SubscriptionId = subscriptionId;
-            AadContext = aadContext;
         }
 
         /// <summary>
@@ -137,7 +134,7 @@
             {
                 if (!Queues.ContainsKey(typeof(T)))
                 {
-                    var queue = new MessageQueue<T>(ConnectionString, AadContext.AuthFilePath, SubscriptionId, MessagesIn.AsObserver());
+                    var queue = new MessageQueue<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver());
                     Queues.Add(typeof(T), queue);
                 }
             }

@@ -7,7 +7,6 @@
     using System.Reactive.Subjects;
     using System.Threading;
     using System.Threading.Tasks;
-    using Eshopworld.Core;
     using JetBrains.Annotations;
 
     /// <summary>
@@ -104,7 +103,6 @@
                 MessageSubs[typeof(T)].Dispose();
                 MessageSubs.Remove(typeof(T));
             }
-
         }
 
         /// <summary>

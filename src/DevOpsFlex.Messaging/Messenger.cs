@@ -5,7 +5,6 @@
     using System.Reactive;
     using System.Reactive.Linq;
     using System.Reactive.Subjects;
-    using System.Threading;
     using System.Threading.Tasks;
     using JetBrains.Annotations;
 
@@ -23,10 +22,10 @@
         internal readonly string ConnectionString;
         internal readonly string SubscriptionId;
 
-        internal readonly ISubject<IMessage> MessagesIn = new Subject<IMessage>();
+        internal readonly ISubject<object> MessagesIn = new Subject<object>();
 
         internal Dictionary<Type, IDisposable> MessageSubs = new Dictionary<Type, IDisposable>();
-        internal Dictionary<Type, MessageQueue> Queues = new Dictionary<Type, MessageQueue>();
+        internal Dictionary<Type, MessageQueueAdapter> QueueAdapters = new Dictionary<Type, MessageQueueAdapter>();
 
         /// <summary>
         /// Initializes a new instance of <see cref="Messenger"/>.
@@ -54,14 +53,14 @@
         /// <typeparam name="T">The type of the message that we are sending.</typeparam>
         /// <param name="message">The message that we are sending.</param>
         public async Task Send<T>(T message)
-            where T : IMessage
+            where T : class
         {
-            if (!Queues.ContainsKey(typeof(T))) // double check, to avoid locking it here to keep it thread safe
+            if (!QueueAdapters.ContainsKey(typeof(T))) // double check, to avoid locking it here to keep it thread safe
             {
                 SetupMessageType<T>();
             }
 
-            await ((MessageQueue<T>)Queues[typeof(T)]).Send(message).ConfigureAwait(false);
+            await ((MessageQueueAdapter<T>)QueueAdapters[typeof(T)]).Send(message).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -72,7 +71,7 @@
         /// <param name="callback">The <see cref="Action{T}"/> delegate that will be called for each message received.</param>
         /// <exception cref="InvalidOperationException">Thrown when you attempt to setup multiple callbacks against the same <typeparamref name="T"/> parameter.</exception>
         public void Receive<T>(Action<T> callback)
-            where T : IMessage
+            where T : class
         {
             lock (Gate)
             {
@@ -90,11 +89,11 @@
         }
 
         /// <summary>
-        /// Stops receiving a message type by disabling the read pooling on the <see cref="MessageQueue"/>.
+        /// Stops receiving a message type by disabling the read pooling on the <see cref="MessageQueueAdapter"/>.
         /// </summary>
         /// <typeparam name="T">The type of the message that we are cancelling the receive on.</typeparam>
         public void CancelReceive<T>()
-            where T : IMessage
+            where T : class
         {
             lock (Gate)
             {
@@ -111,33 +110,11 @@
         /// </summary>
         /// <typeparam name="T">The type of the message we want the reactive pipeline for.</typeparam>
         /// <returns>The typed <see cref="IObservable{T}"/> that you can plug into.</returns>
-        public IObservable<T> GetObservable<T>()
-            where T : IMessage
+        public IObservable<T> GetObservable<T>() where T : class
         {
             SetupMessageType<T>().StartReading();
 
             return MessagesIn.OfType<T>().AsObservable();
-        }
-
-        /// <summary>
-        /// Sets the messenger up for either sending or receiving a specific message of type <typeparamref name="T"/>.
-        /// This will create the <see cref="Microsoft.ServiceBus.Messaging.QueueClient"/> but will not set it up for reading the queue.
-        /// </summary>
-        /// <typeparam name="T">The type of the message we are setting up.</typeparam>
-        /// <returns>The message queue wrapper.</returns>
-        internal MessageQueue<T> SetupMessageType<T>()
-            where T : IMessage
-        {
-            lock (Gate)
-            {
-                if (!Queues.ContainsKey(typeof(T)))
-                {
-                    var queue = new MessageQueue<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver());
-                    Queues.Add(typeof(T), queue);
-                }
-            }
-
-            return (MessageQueue<T>)Queues[typeof(T)];
         }
 
         /// <summary>
@@ -147,21 +124,10 @@
         /// </summary>
         /// <param name="message">The message that we want to create the lock on.</param>
         /// <returns>The async <see cref="Task"/> wrapper</returns>
-        internal static async Task Lock(IMessage message)
+        public async Task Lock<T>(T message) where T : class
         {
-            var bMessage = MessageQueue.BrokeredMessages[message];
-            await bMessage.RenewLockAsync();
-
-            MessageQueue.LockTimers.Add(
-                message,
-                new Timer(
-                    async _ =>
-                    {
-                        await bMessage.RenewLockAsync().ConfigureAwait(false);
-                    },
-                    null,
-                    TimeSpan.FromSeconds(MessageQueue.LockTickInSeconds),
-                    TimeSpan.FromSeconds(MessageQueue.LockTickInSeconds)));
+            var adapter = (MessageQueueAdapter<T>)QueueAdapters[typeof(T)];
+            await adapter.Lock(message).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -169,10 +135,10 @@
         /// </summary>
         /// <param name="message">The message we want to complete.</param>
         /// <returns>The async <see cref="Task"/> wrapper</returns>
-        internal static async Task Complete(IMessage message)
+        public async Task Complete<T>(T message) where T : class
         {
-            await MessageQueue.BrokeredMessages[message].CompleteAsync().ConfigureAwait(false);
-            MessageQueue.Release(message);
+            var adapter = (MessageQueueAdapter<T>)QueueAdapters[typeof(T)];
+            await adapter.Complete(message).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -180,10 +146,10 @@
         /// </summary>
         /// <param name="message">The message we want to abandon.</param>
         /// <returns>The async <see cref="Task"/> wrapper</returns>
-        internal static async Task Abandon(IMessage message)
+        public async Task Abandon<T>(T message) where T : class
         {
-            await MessageQueue.BrokeredMessages[message].AbandonAsync().ConfigureAwait(false);
-            MessageQueue.Release(message);
+            var adapter = (MessageQueueAdapter<T>) QueueAdapters[typeof(T)];
+            await adapter.Abandon(message).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -191,12 +157,31 @@
         /// </summary>
         /// <param name="message">The message that we want to move to the error queue.</param>
         /// <returns>The async <see cref="Task"/> wrapper</returns>
-        internal static async Task Error(IMessage message)
+        public async Task Error<T>(T message) where T : class
         {
-            await MessageQueue.BrokeredMessages[message].DeadLetterAsync().ConfigureAwait(false);
-            MessageQueue.Release(message); // don't do this inside the transaction as it's not transactional
+            var adapter = (MessageQueueAdapter<T>)QueueAdapters[typeof(T)];
+            await adapter.Error(message).ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// Sets the messenger up for either sending or receiving a specific message of type <typeparamref name="T"/>.
+        /// This will create the <see cref="MessageQueueAdapter"/> but will not set it up for reading the queue.
+        /// </summary>
+        /// <typeparam name="T">The type of the message we are setting up.</typeparam>
+        /// <returns>The message queue wrapper.</returns>
+        internal MessageQueueAdapter<T> SetupMessageType<T>() where T : class
+        {
+            lock (Gate)
+            {
+                if (!QueueAdapters.ContainsKey(typeof(T)))
+                {
+                    var queue = new MessageQueueAdapter<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver());
+                    QueueAdapters.Add(typeof(T), queue);
+                }
+            }
+
+            return (MessageQueueAdapter<T>)QueueAdapters[typeof(T)];
+        }
 
         /// <summary>
         /// Provides a mechanism for releasing resources.
@@ -206,8 +191,8 @@
             MessageSubs.Release();
             MessageSubs = null;
 
-            Queues.Release();
-            Queues = null;
+            QueueAdapters.Release();
+            QueueAdapters = null;
         }
     }
 }

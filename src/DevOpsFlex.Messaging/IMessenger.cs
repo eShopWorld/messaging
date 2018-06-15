@@ -14,7 +14,7 @@
         /// </summary>
         /// <typeparam name="T">The type of the message that we are sending.</typeparam>
         /// <param name="message">The message that we are sending.</param>
-        Task Send<T>([NotNull] T message) where T : IMessage;
+        Task Send<T>([NotNull] T message) where T : class;
     }
 
     /// <summary>
@@ -29,13 +29,13 @@
         /// <typeparam name="T">The type of the message that we are subscribing to receiving.</typeparam>
         /// <param name="callback">The <see cref="Action{T}"/> delegate that will be called for each message received.</param>
         /// <exception cref="InvalidOperationException">Thrown when you attempt to setup multiple callbacks against the same <typeparamref name="T"/> parameter.</exception>
-        void Receive<T>([NotNull] Action<T> callback) where T : IMessage;
+        void Receive<T>([NotNull] Action<T> callback) where T : class;
 
         /// <summary>
-        /// Stops receiving a message type by disabling the read pooling on the <see cref="MessageQueue"/>.
+        /// Stops receiving a message type by disabling the read pooling on the <see cref="MessageQueueAdapter"/>.
         /// </summary>
         /// <typeparam name="T">The type of the message that we are cancelling the receive on.</typeparam>
-        void CancelReceive<T>() where T : IMessage;
+        void CancelReceive<T>() where T : class;
     }
 
     /// <summary>
@@ -49,6 +49,6 @@
         /// </summary>
         /// <typeparam name="T">The type of the message we want the reactive pipeline for.</typeparam>
         /// <returns>The typed <see cref="IObservable{T}"/> that you can plug into.</returns>
-        IObservable<T> GetObservable<T>() where T : IMessage;
+        IObservable<T> GetObservable<T>() where T : class;
     }
 }

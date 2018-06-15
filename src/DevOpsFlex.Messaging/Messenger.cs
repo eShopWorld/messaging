@@ -31,15 +31,6 @@
         /// Initializes a new instance of <see cref="Messenger"/>.
         /// </summary>
         /// <param name="connectionString">The Azure Service Bus connection string.</param>
-        public Messenger([NotNull]string connectionString)
-        {
-            ConnectionString = connectionString;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="Messenger"/>.
-        /// </summary>
-        /// <param name="connectionString">The Azure Service Bus connection string.</param>
         /// <param name="subscriptionId">The subscription ID where the service bus namespace lives.</param>
         public Messenger([NotNull]string connectionString, [NotNull]string subscriptionId)
         {

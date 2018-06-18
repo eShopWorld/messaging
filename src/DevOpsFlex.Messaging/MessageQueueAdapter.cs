@@ -206,14 +206,14 @@
         /// <param name="messageType">The fully strongly typed <see cref="Type"/> of the message we want to create the queue for.</param>
         internal MessageQueueAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]Type messageType)
         {
-            var namespaceName = Regex.Match(connectionString, @"Endpoint=sb:\/\/([^.]*)", RegexOptions.IgnoreCase).Groups[1].Value;
-
             if (messageType.FullName?.Length > 260) // SB quota: Entity path max length
             {
                 throw new InvalidOperationException(
 $@"You can't create queues for the type {messageType.FullName} because the full name (namespace + name) exceeds 260 characters.
 I suggest you reduce the size of the namespace: '{messageType.Namespace}'.");
             }
+
+            var namespaceName = Regex.Match(connectionString, @"Endpoint=sb:\/\/([^.]*)", RegexOptions.IgnoreCase).Groups[1].Value;
 
             if (AzureServiceBusNamespace == null)
             {

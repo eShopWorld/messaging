@@ -15,7 +15,7 @@
     using Microsoft.Rest;
     using Xunit;
 
-    public class AzureServiceBusFixture : IDisposable
+    public class AzureServiceBusFixture
     {
         internal const string KeyvaultUriName = "TEST_KEYVAULT_URI";
         internal readonly IServiceBusNamespace ServiceBusNamespace;
@@ -27,9 +27,10 @@
                                Environment.GetEnvironmentVariable(KeyvaultUriName, EnvironmentVariableTarget.User)) ??
                                Environment.GetEnvironmentVariable(KeyvaultUriName, EnvironmentVariableTarget.Process);
 
+            var tokenProvider = new AzureServiceTokenProvider();
             var config = new ConfigurationBuilder().AddAzureKeyVault(
                                                        keyvaultUri,
-                                                       new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(new AzureServiceTokenProvider().KeyVaultTokenCallback)),
+                                                       new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(tokenProvider.KeyVaultTokenCallback)),
                                                        new DefaultKeyVaultSecretManager())
                                                    .Build();
 
@@ -37,7 +38,7 @@
 
             var namespaceName = Regex.Match(ConfigSettings.ConnectionString, @"Endpoint=sb:\/\/([^.]*)", RegexOptions.IgnoreCase).Groups[1].Value;
 
-            var token = new AzureServiceTokenProvider().GetAccessTokenAsync("https://management.core.windows.net/", string.Empty).Result;
+            var token = tokenProvider.GetAccessTokenAsync("https://management.core.windows.net/", string.Empty).Result;
             var tokenCredentials = new TokenCredentials(token);
 
             var client = RestClient.Configure()
@@ -56,17 +57,13 @@
                 throw new InvalidOperationException($"Couldn't find the service bus namespace {namespaceName} in the subscription with ID {ConfigSettings.SubscriptionId}");
             }
         }
-
-        public void Dispose()
-        {
-        }
     }
 
     [CollectionDefinition(nameof(AzureServiceBusCollection))]
     public class AzureServiceBusCollection : ICollectionFixture<AzureServiceBusFixture> { }
 
     /// <summary>
-    /// Binder POCO to the keyvault settings:
+    /// Binder POCO for the <see cref="ConfigurationBuilder"/> to the keyvault settings:
     ///     --ConnectionString
     ///     --SubscriptionId
     /// </summary>

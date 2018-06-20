@@ -7,6 +7,7 @@ using DevOpsFlex.Messaging;
 using DevOpsFlex.Messaging.Tests;
 using Eshopworld.Tests.Core;
 using FluentAssertions;
+using Microsoft.Azure.ServiceBus.Core;
 using Xunit;
 
 // ReSharper disable once CheckNamespace
@@ -33,58 +34,53 @@ public class MessengerTest
             using (IMessenger msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
             {
                 await msn.Send(new T());
-                await Task.Delay(TimeSpan.FromSeconds(5)); // wait 5 seconds to flush out all the messages
-
                 ServiceBusFixture.ServiceBusNamespace.AssertSingleQueueExists(typeof(T));
             }
         }
 
-        //[Theory, IsIntegration]
-        //[MemberData(nameof(GetData_TestMessageTypes))]
-        //public async Task Test_ReceiveCreatesTheQueue<T>(T _)
-        //    where T : new() // be careful with this, if the test doesn't run it's because the T validation is broken
-        //{
-        //    var nsm = NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString());
-        //    await nsm.ScorchNamespace();
-        //    MessageQueue.LockTimers.Release();
-        //    MessageQueue.BrokeredMessages.Release();
+        [Theory, IsIntegration]
+        [MemberData(nameof(GetData_TestMessageTypes))]
+        public async Task Test_ReceiveCreatesTheQueue<T>(T _)
+            where T : class, new() // be careful with this, if the test doesn't run it's because the T validation is broken
+        {
+            await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
 
-        //    using (IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString()))
-        //    {
-        //        msn.Receive<T>(__ => { });
-        //        (await nsm.GetQueuesAsync()).ToList().AssertSingleQueueExists(typeof(T));
-        //    }
-        //}
+            using (IMessenger msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
+            {
+                msn.Receive<T>(__ => { });
+                ServiceBusFixture.ServiceBusNamespace.AssertSingleQueueExists(typeof(T));
+            }
+        }
 
-        //[Theory, IsIntegration]
-        //[MemberData(nameof(GetData_TestMessageTypes))]
-        //public async Task Test_SendingRandomMessages<T>(T _)
-        //    where T : new() // be careful with this, if the test doesn't run it's because the T validation is broken
-        //{
-        //    var sendCount = new Random().Next(1, 10);
-        //    await NamespaceManager.CreateFromConnectionString(NamespaceHelper.GetConnectionString()).ScorchNamespace();
-        //    MessageQueue.LockTimers.Release();
-        //    MessageQueue.BrokeredMessages.Release();
+        [Theory, IsIntegration]
+        [MemberData(nameof(GetData_TestMessageTypes))]
+        public async Task Test_SendingRandomMessages<T>(T _)
+            where T : class, new() // be careful with this, if the test doesn't run it's because the T validation is broken
+        {
+            var sendCount = new Random().Next(1, 10);
+            await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
 
-        //    var messages = new List<T>();
-        //    for (var i = 0; i < sendCount; i++) { messages.Add(new T()); }
+            var messages = new List<T>();
+            for (var i = 0; i < sendCount; i++) { messages.Add(new T()); }
 
-        //    using (IMessenger msn = new Messenger(NamespaceHelper.GetConnectionString()))
-        //    {
-        //        foreach (var message in messages)
-        //        {
-        //            await msn.Send(message);
-        //        }
+            using (IMessenger msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
+            {
+                foreach (var message in messages)
+                {
+                    await msn.Send(message);
+                }
 
-        //        await Task.Delay(TimeSpan.FromSeconds(5)); // wait 5 seconds to flush out all the messages
+                await Task.Delay(TimeSpan.FromSeconds(5)); // wait 5 seconds to flush out all the messages
 
-        //        var qClient = QueueClient.CreateFromConnectionString(NamespaceHelper.GetConnectionString(), typeof(T).GetQueueName());
-        //        var rMessages = (await qClient.ReadBatchAsync<T>(sendCount)).ToList();
-        //        rMessages.Should().BeEquivalentTo(messages);
+                var receiver = new MessageReceiver(ServiceBusFixture.ConfigSettings.ConnectionString, typeof(T).GetQueueName());
+                var rMessages = (await receiver.ReadBatchAsync<T>(sendCount)).ToList();
 
-        //        qClient.Close();
-        //    }
-        //}
+                foreach (var message in messages)
+                {
+                    rMessages.Contains(message).Should().BeTrue();
+                }
+            }
+        }
 
         //[Theory, IsIntegration]
         //[MemberData(nameof(GetData_TestMessageTypes))]
@@ -282,11 +278,11 @@ namespace DevOpsFlex.Messaging.Tests
     {
         private static readonly Random Rng = new Random();
 
-        public string Name { get; }
+        public string Name { get; set; }
 
-        public string Stuff { get; }
+        public string Stuff { get; set; }
 
-        public float Price { get; }
+        public float Price { get; set; }
 
         public TestMessage()
         {
@@ -311,22 +307,22 @@ namespace DevOpsFlex.Messaging.Tests
                    Price.Equals(other.Price);
         }
 
-        public override bool Equals(object obj)
-        {
-            if (obj is null) return false;
-            if (ReferenceEquals(this, obj)) return true;
-            return obj.GetType() == GetType() && Equals((TestMessage)obj);
-        }
+        //public override bool Equals(object obj)
+        //{
+        //    if (obj is null) return false;
+        //    if (ReferenceEquals(this, obj)) return true;
+        //    return obj.GetType() == GetType() && Equals((TestMessage)obj);
+        //}
 
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                var hashCode = Name?.GetHashCode() ?? 0;
-                hashCode = (hashCode * 397) ^ (Stuff?.GetHashCode() ?? 0);
-                hashCode = (hashCode * 397) ^ Price.GetHashCode();
-                return hashCode;
-            }
-        }
+        //public override int GetHashCode()
+        //{
+        //    unchecked
+        //    {
+        //        var hashCode = Name?.GetHashCode() ?? 0;
+        //        hashCode = (hashCode * 397) ^ (Stuff?.GetHashCode() ?? 0);
+        //        hashCode = (hashCode * 397) ^ Price.GetHashCode();
+        //        return hashCode;
+        //    }
+        //}
     }
 }

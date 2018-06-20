@@ -1,7 +1,10 @@
 ﻿namespace DevOpsFlex.Messaging.Tests
 {
+    using System;
+    using System.Linq;
     using Microsoft.Azure.Management.ServiceBus.Fluent;
     using System.Threading.Tasks;
+    using FluentAssertions;
 
     /// <summary>
     /// Contains extension methods for <see cref="Microsoft.Azure.Management.Fluent"/> around ServiceBus.
@@ -26,6 +29,15 @@
             {
                 await sbNamespace.Topics.DeleteByNameAsync(topic.Name);
             }
+        }
+
+        public static void AssertSingleQueueExists(this IServiceBusNamespace sbNamespace, Type type)
+        {
+            sbNamespace.Refresh();
+            var queues = sbNamespace.Queues.List().ToList();
+
+            queues.Count.Should().Be(1);
+            queues.SingleOrDefault(q => string.Equals(q.Name, type.GetQueueName(), StringComparison.CurrentCultureIgnoreCase)).Should().NotBeNull();
         }
     }
 }

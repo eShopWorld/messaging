@@ -30,7 +30,8 @@
                              .WithMessageMovedToDeadLetterQueueOnMaxDeliveryCount(10)
                              .CreateAsync();
 
-            return (await sbNamespace.Queues.ListAsync()).Single(q => q.Name == name);
+            await sbNamespace.RefreshAsync();
+            return (await sbNamespace.Queues.ListAsync()).Single(q => q.Name == name.ToLower());
         }
     }
 
@@ -56,9 +57,9 @@
                 queueName += $"-{Environment.UserName.Replace("$", "")}";
             }
 
-            return queueName;
+            return queueName?.ToLower();
 #else
-            return type.FullName;
+            return type.FullName?.ToLower();
 #endif
         }
     }

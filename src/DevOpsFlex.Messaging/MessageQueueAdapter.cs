@@ -242,7 +242,7 @@ I suggest you reduce the size of the namespace: '{messageType.Namespace}'.");
             LockInSeconds = AzureQueue.LockDurationInSeconds;
             LockTickInSeconds = (long)Math.Floor(LockInSeconds * 0.8); // renew at 80% to cope with load
 
-            Receiver = new MessageReceiver(connectionString, AzureQueue.Name, ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
+            Receiver = new MessageReceiver(connectionString, AzureQueue.Name, ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3), BatchSize);
             Sender = new MessageSender(connectionString, AzureQueue.Name, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
         }
 

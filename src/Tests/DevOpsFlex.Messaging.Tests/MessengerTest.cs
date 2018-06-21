@@ -7,6 +7,7 @@ using DevOpsFlex.Messaging;
 using DevOpsFlex.Messaging.Tests;
 using Eshopworld.Tests.Core;
 using FluentAssertions;
+using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.ServiceBus.Core;
 using Xunit;
 
@@ -41,7 +42,7 @@ public class MessengerTest
         [Theory, IsIntegration]
         [MemberData(nameof(GetData_TestMessageTypes))]
         public async Task Test_ReceiveCreatesTheQueue<T>(T _)
-            where T : class, new() // be careful with this, if the test doesn't run it's because the T validation is broken
+            where T : class, new()
         {
             await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
 
@@ -55,9 +56,10 @@ public class MessengerTest
         [Theory, IsIntegration]
         [MemberData(nameof(GetData_TestMessageTypes))]
         public async Task Test_SendingRandomMessages<T>(T _)
-            where T : class, new() // be careful with this, if the test doesn't run it's because the T validation is broken
+            where T : class, new()
         {
             var sendCount = new Random().Next(1, 10);
+
             await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
 
             var messages = new List<T>();
@@ -72,7 +74,7 @@ public class MessengerTest
 
                 await Task.Delay(TimeSpan.FromSeconds(5)); // wait 5 seconds to flush out all the messages
 
-                var receiver = new MessageReceiver(ServiceBusFixture.ConfigSettings.ConnectionString, typeof(T).GetQueueName());
+                var receiver = new MessageReceiver(ServiceBusFixture.ConfigSettings.ConnectionString, typeof(T).GetQueueName(), ReceiveMode.ReceiveAndDelete, null, sendCount);
                 var rMessages = (await receiver.ReadBatchAsync<T>(sendCount)).ToList();
 
                 foreach (var message in messages)

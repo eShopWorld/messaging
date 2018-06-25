@@ -90,6 +90,7 @@
         internal async Task Read([CanBeNull]object _)
         {
             var messages = await Receiver.ReceiveAsync(BatchSize).ConfigureAwait(false);
+            if (messages == null) return;
 
             foreach (var message in messages)
             {

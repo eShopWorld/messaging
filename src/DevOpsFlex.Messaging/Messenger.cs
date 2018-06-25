@@ -38,11 +38,7 @@
             SubscriptionId = subscriptionId;
         }
 
-        /// <summary>
-        /// Sends a message.
-        /// </summary>
-        /// <typeparam name="T">The type of the message that we are sending.</typeparam>
-        /// <param name="message">The message that we are sending.</param>
+        /// <inheritdoc />
         public async Task Send<T>(T message)
             where T : class
         {
@@ -54,13 +50,7 @@
             await ((MessageQueueAdapter<T>)QueueAdapters[typeof(T)]).Send(message).ConfigureAwait(false);
         }
 
-        /// <summary>
-        /// Sets up a call back for receiving any message of type <typeparamref name="T"/>.
-        /// If you try to setup more then one callback to the same message type <typeparamref name="T"/> you'll get an <see cref="InvalidOperationException"/>.
-        /// </summary>
-        /// <typeparam name="T">The type of the message that we are subscribing to receiving.</typeparam>
-        /// <param name="callback">The <see cref="Action{T}"/> delegate that will be called for each message received.</param>
-        /// <exception cref="InvalidOperationException">Thrown when you attempt to setup multiple callbacks against the same <typeparamref name="T"/> parameter.</exception>
+        /// <inheritdoc />
         public void Receive<T>(Action<T> callback)
             where T : class
         {
@@ -79,10 +69,7 @@
             }
         }
 
-        /// <summary>
-        /// Stops receiving a message type by disabling the read pooling on the <see cref="MessageQueueAdapter"/>.
-        /// </summary>
-        /// <typeparam name="T">The type of the message that we are cancelling the receive on.</typeparam>
+        /// <inheritdoc />
         public void CancelReceive<T>()
             where T : class
         {
@@ -95,12 +82,7 @@
             }
         }
 
-        /// <summary>
-        /// Setups up the required receive pipeline for the given message type and returns a reactive
-        /// <see cref="IObservable{T}"/> that you can plug into.
-        /// </summary>
-        /// <typeparam name="T">The type of the message we want the reactive pipeline for.</typeparam>
-        /// <returns>The typed <see cref="IObservable{T}"/> that you can plug into.</returns>
+        /// <inheritdoc />
         public IObservable<T> GetObservable<T>() where T : class
         {
             SetupMessageType<T>().StartReading();
@@ -108,46 +90,28 @@
             return MessagesIn.OfType<T>().AsObservable();
         }
 
-        /// <summary>
-        /// Creates a perpetual lock on a message by continuously renewing it's lock.
-        /// This is usually created at the start of a handler so that we guarantee that we still have a valid lock
-        /// and we retain that lock until we finish handling the message.
-        /// </summary>
-        /// <param name="message">The message that we want to create the lock on.</param>
-        /// <returns>The async <see cref="Task"/> wrapper</returns>
+        /// <inheritdoc />
         public async Task Lock<T>(T message) where T : class
         {
             var adapter = (MessageQueueAdapter<T>)QueueAdapters[typeof(T)];
             await adapter.Lock(message).ConfigureAwait(false);
         }
 
-        /// <summary>
-        /// Completes a message by doing the actual READ from the queue.
-        /// </summary>
-        /// <param name="message">The message we want to complete.</param>
-        /// <returns>The async <see cref="Task"/> wrapper</returns>
+        /// <inheritdoc />
         public async Task Complete<T>(T message) where T : class
         {
             var adapter = (MessageQueueAdapter<T>)QueueAdapters[typeof(T)];
             await adapter.Complete(message).ConfigureAwait(false);
         }
 
-        /// <summary>
-        /// Abandons a message by returning it to the queue.
-        /// </summary>
-        /// <param name="message">The message we want to abandon.</param>
-        /// <returns>The async <see cref="Task"/> wrapper</returns>
+        /// <inheritdoc />
         public async Task Abandon<T>(T message) where T : class
         {
             var adapter = (MessageQueueAdapter<T>) QueueAdapters[typeof(T)];
             await adapter.Abandon(message).ConfigureAwait(false);
         }
 
-        /// <summary>
-        /// Errors a message by moving it specifically to the error queue.
-        /// </summary>
-        /// <param name="message">The message that we want to move to the error queue.</param>
-        /// <returns>The async <see cref="Task"/> wrapper</returns>
+        /// <inheritdoc />
         public async Task Error<T>(T message) where T : class
         {
             var adapter = (MessageQueueAdapter<T>)QueueAdapters[typeof(T)];

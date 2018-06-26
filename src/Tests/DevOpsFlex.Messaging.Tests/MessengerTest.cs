@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using DevOpsFlex.Messaging;
@@ -10,7 +9,6 @@ using Eshopworld.Tests.Core;
 using FluentAssertions;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.ServiceBus.Core;
-using Newtonsoft.Json;
 using Xunit;
 
 // ReSharper disable once CheckNamespace

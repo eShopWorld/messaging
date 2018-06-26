@@ -45,6 +45,12 @@
         /// <param name="message">The message that we want to move to the error queue.</param>
         /// <returns>The async <see cref="Task"/> wrapper</returns>
         Task Error<T>(T message) where T : class;
+
+        /// <summary>
+        /// Sets the size of the message batch during receives.
+        /// </summary>
+        /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
+        void SetBatchSize<T>(int batchSize) where T : class;
     }
 
     /// <summary>
@@ -71,8 +77,9 @@
         /// </summary>
         /// <typeparam name="T">The type of the message that we are subscribing to receiving.</typeparam>
         /// <param name="callback">The <see cref="Action{T}"/> delegate that will be called for each message received.</param>
+        /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
         /// <exception cref="InvalidOperationException">Thrown when you attempt to setup multiple callbacks against the same <typeparamref name="T"/> parameter.</exception>
-        void Receive<T>([NotNull] Action<T> callback) where T : class;
+        void Receive<T>([NotNull] Action<T> callback, int batchSize = 10) where T : class;
     }
 
     /// <summary>
@@ -85,7 +92,8 @@
         /// <see cref="IObservable{T}"/> that you can plug into.
         /// </summary>
         /// <typeparam name="T">The type of the message we want the reactive pipeline for.</typeparam>
+        /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
         /// <returns>The typed <see cref="IObservable{T}"/> that you can plug into.</returns>
-        IObservable<T> GetObservable<T>() where T : class;
+        IObservable<T> GetObservable<T>(int batchSize = 10) where T : class;
     }
 }

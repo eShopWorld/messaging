@@ -44,14 +44,14 @@
         {
             if (!QueueAdapters.ContainsKey(typeof(T))) // double check, to avoid locking it here to keep it thread safe
             {
-                SetupMessageType<T>();
+                SetupMessageType<T>(10);
             }
 
             await ((MessageQueueAdapter<T>)QueueAdapters[typeof(T)]).Send(message).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
-        public void Receive<T>(Action<T> callback)
+        public void Receive<T>(Action<T> callback, int batchSize = 10)
             where T : class
         {
             lock (Gate)
@@ -61,7 +61,7 @@
                     throw new InvalidOperationException("You already added a callback to this message type. Only one callback per type is supported.");
                 }
 
-                SetupMessageType<T>().StartReading();
+                SetupMessageType<T>(batchSize).StartReading();
 
                 MessageSubs.Add(
                     typeof(T),
@@ -75,7 +75,12 @@
         {
             lock (Gate)
             {
-                SetupMessageType<T>().StopReading();
+                if (!QueueAdapters.ContainsKey(typeof(T)))
+                {
+                    throw new InvalidOperationException($"Messages of type {typeof(T).FullName} haven't been setup properly yet");
+                }
+
+                ((MessageQueueAdapter<T>) QueueAdapters[typeof(T)]).StopReading();
 
                 MessageSubs[typeof(T)].Dispose();
                 MessageSubs.Remove(typeof(T));
@@ -83,9 +88,9 @@
         }
 
         /// <inheritdoc />
-        public IObservable<T> GetObservable<T>() where T : class
+        public IObservable<T> GetObservable<T>(int batchSize = 10) where T : class
         {
-            SetupMessageType<T>().StartReading();
+            SetupMessageType<T>(batchSize).StartReading();
 
             return MessagesIn.OfType<T>().AsObservable();
         }
@@ -93,14 +98,14 @@
         /// <inheritdoc />
         public async Task Lock<T>(T message) where T : class
         {
-            var adapter = (MessageQueueAdapter<T>)QueueAdapters[typeof(T)];
+            var adapter = (MessageQueueAdapter<T>) QueueAdapters[typeof(T)];
             await adapter.Lock(message).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
         public async Task Complete<T>(T message) where T : class
         {
-            var adapter = (MessageQueueAdapter<T>)QueueAdapters[typeof(T)];
+            var adapter = (MessageQueueAdapter<T>) QueueAdapters[typeof(T)];
             await adapter.Complete(message).ConfigureAwait(false);
         }
 
@@ -114,8 +119,14 @@
         /// <inheritdoc />
         public async Task Error<T>(T message) where T : class
         {
-            var adapter = (MessageQueueAdapter<T>)QueueAdapters[typeof(T)];
+            var adapter = (MessageQueueAdapter<T>) QueueAdapters[typeof(T)];
             await adapter.Error(message).ConfigureAwait(false);
+        }
+
+        /// <inheritdoc />
+        public void SetBatchSize<T>(int batchSize) where T : class
+        {
+            ((MessageQueueAdapter<T>) QueueAdapters[typeof(T)]).SetBatchSize(batchSize);
         }
 
         /// <summary>
@@ -123,14 +134,15 @@
         /// This will create the <see cref="MessageQueueAdapter"/> but will not set it up for reading the queue.
         /// </summary>
         /// <typeparam name="T">The type of the message we are setting up.</typeparam>
+        /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
         /// <returns>The message queue wrapper.</returns>
-        internal MessageQueueAdapter<T> SetupMessageType<T>() where T : class
+        internal MessageQueueAdapter<T> SetupMessageType<T>(int batchSize) where T : class
         {
             lock (Gate)
             {
                 if (!QueueAdapters.ContainsKey(typeof(T)))
                 {
-                    var queue = new MessageQueueAdapter<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver());
+                    var queue = new MessageQueueAdapter<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver(), batchSize);
                     QueueAdapters.Add(typeof(T), queue);
                 }
             }

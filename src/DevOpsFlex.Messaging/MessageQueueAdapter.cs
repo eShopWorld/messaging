@@ -30,6 +30,7 @@
         internal readonly IDictionary<T, Timer> LockTimers = new Dictionary<T, Timer>(ObjectReferenceEqualityComparer<T>.Default);
         internal readonly IObserver<T> MessagesIn;
         internal Timer ReadTimer;
+        internal int BatchSize = 10;
 
         /// <summary>
         /// Initializes a new instance of <see cref="MessageQueueAdapter{T}"/>.
@@ -37,8 +38,9 @@
         /// <param name="connectionString">The Azure Service Bus connection string.</param>
         /// <param name="subscriptionId">The ID of the subscription where the service bus namespace lives.</param>
         /// <param name="messagesIn">The <see cref="IObserver{IMessage}"/> used to push received messages into the pipeline.</param>
-        public MessageQueueAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IObserver<T> messagesIn)
-            : base(connectionString, subscriptionId, typeof(T))
+        /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
+        public MessageQueueAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize)
+            : base(connectionString, subscriptionId, typeof(T), batchSize)
         {
             MessagesIn = messagesIn;
         }
@@ -155,6 +157,16 @@
         }
 
         /// <summary>
+        /// Sets the size of the message batch during receives.
+        /// </summary>
+        /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
+        internal void SetBatchSize(int batchSize)
+        {
+            BatchSize = batchSize;
+            Receiver.PrefetchCount = batchSize;
+        }
+
+        /// <summary>
         /// Releases a message from the Queue by releasing all the specific message resources like lock
         /// renewal timers.
         /// This is called by all the methods that terminate the life of a message like COMPLETE, ABANDON and ERROR.
@@ -195,7 +207,6 @@
         internal readonly long LockInSeconds;
         internal readonly long LockTickInSeconds;
 
-        internal int BatchSize = 10; // TODO: EXPOSING THIS THROUGH API IS PART OF THE WORKLOAD
         internal readonly MessageReceiver Receiver;
         internal readonly MessageSender Sender;
 
@@ -205,7 +216,8 @@
         /// <param name="connectionString">The Azure Service Bus connection string.</param>
         /// <param name="subscriptionId">The ID of the subscription where the service bus namespace lives.</param>
         /// <param name="messageType">The fully strongly typed <see cref="Type"/> of the message we want to create the queue for.</param>
-        internal MessageQueueAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]Type messageType)
+        /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
+        internal MessageQueueAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]Type messageType, int batchSize)
         {
             if (messageType.FullName?.Length > 260) // SB quota: Entity path max length
             {
@@ -243,7 +255,7 @@ I suggest you reduce the size of the namespace: '{messageType.Namespace}'.");
             LockInSeconds = AzureQueue.LockDurationInSeconds;
             LockTickInSeconds = (long)Math.Floor(LockInSeconds * 0.8); // renew at 80% to cope with load
 
-            Receiver = new MessageReceiver(connectionString, AzureQueue.Name, ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3), BatchSize);
+            Receiver = new MessageReceiver(connectionString, AzureQueue.Name, ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3), batchSize);
             Sender = new MessageSender(connectionString, AzureQueue.Name, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
         }
 

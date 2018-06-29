@@ -1,4 +1,4 @@
-﻿namespace DevOpsFlex.Messaging.Tests
+﻿namespace Eshopworld.Messaging.Tests
 {
     using System.Collections.Generic;
     using System.Linq;

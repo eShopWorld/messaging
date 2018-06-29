@@ -1,10 +1,10 @@
-﻿namespace DevOpsFlex.Messaging.Tests
+﻿namespace Eshopworld.Messaging.Tests
 {
     using System;
     using System.Linq;
-    using Microsoft.Azure.Management.ServiceBus.Fluent;
     using System.Threading.Tasks;
     using FluentAssertions;
+    using Microsoft.Azure.Management.ServiceBus.Fluent;
 
     /// <summary>
     /// Contains extension methods for <see cref="Microsoft.Azure.Management.Fluent"/> around ServiceBus.

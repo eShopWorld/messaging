@@ -1,4 +1,4 @@
-﻿namespace DevOpsFlex.Messaging
+﻿namespace Eshopworld.Messaging
 {
     using System;
     using System.Collections.Generic;

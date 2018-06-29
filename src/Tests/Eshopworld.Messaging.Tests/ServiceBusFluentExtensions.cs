@@ -17,7 +17,6 @@
         /// both queue and topic creation processes are in place and working as intended.
         /// </summary>
         /// <param name="sbNamespace">The <see cref="IServiceBusNamespace"/> that we are scorching.</param>
-        /// <returns>The async <see cref="Task"/> wrapper.</returns>
         public static async Task ScorchNamespace(this IServiceBusNamespace sbNamespace)
         {
             foreach (var queue in await sbNamespace.Queues.ListAsync())

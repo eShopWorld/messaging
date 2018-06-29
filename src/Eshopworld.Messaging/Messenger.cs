@@ -43,7 +43,7 @@
         public async Task Send<T>(T message)
             where T : class
         {
-            if (!QueueAdapters.ContainsKey(typeof(T))) // double check, to avoid locking it here to keep it thread safe
+            if (!QueueAdapters.ContainsKey(typeof(T)))
             {
                 SetupMessageType<T>(10);
             }
@@ -99,6 +99,11 @@
         /// <inheritdoc />
         public async Task Lock<T>(T message) where T : class
         {
+            if (!QueueAdapters.ContainsKey(typeof(T)))
+            {
+                throw new InvalidOperationException($"Messages of type {typeof(T).FullName} haven't been setup properly yet");
+            }
+
             var adapter = (MessageQueueAdapter<T>) QueueAdapters[typeof(T)];
             await adapter.Lock(message).ConfigureAwait(false);
         }
@@ -106,6 +111,11 @@
         /// <inheritdoc />
         public async Task Complete<T>(T message) where T : class
         {
+            if (!QueueAdapters.ContainsKey(typeof(T)))
+            {
+                throw new InvalidOperationException($"Messages of type {typeof(T).FullName} haven't been setup properly yet");
+            }
+
             var adapter = (MessageQueueAdapter<T>) QueueAdapters[typeof(T)];
             await adapter.Complete(message).ConfigureAwait(false);
         }
@@ -113,6 +123,11 @@
         /// <inheritdoc />
         public async Task Abandon<T>(T message) where T : class
         {
+            if (!QueueAdapters.ContainsKey(typeof(T)))
+            {
+                throw new InvalidOperationException($"Messages of type {typeof(T).FullName} haven't been setup properly yet");
+            }
+
             var adapter = (MessageQueueAdapter<T>) QueueAdapters[typeof(T)];
             await adapter.Abandon(message).ConfigureAwait(false);
         }
@@ -120,6 +135,11 @@
         /// <inheritdoc />
         public async Task Error<T>(T message) where T : class
         {
+            if (!QueueAdapters.ContainsKey(typeof(T)))
+            {
+                throw new InvalidOperationException($"Messages of type {typeof(T).FullName} haven't been setup properly yet");
+            }
+
             var adapter = (MessageQueueAdapter<T>) QueueAdapters[typeof(T)];
             await adapter.Error(message).ConfigureAwait(false);
         }
@@ -127,6 +147,11 @@
         /// <inheritdoc />
         public void SetBatchSize<T>(int batchSize) where T : class
         {
+            if (!QueueAdapters.ContainsKey(typeof(T)))
+            {
+                throw new InvalidOperationException($"Messages of type {typeof(T).FullName} haven't been setup properly yet");
+            }
+
             ((MessageQueueAdapter<T>) QueueAdapters[typeof(T)]).SetBatchSize(batchSize);
         }
 
@@ -136,7 +161,7 @@
         /// </summary>
         /// <typeparam name="T">The type of the message we are setting up.</typeparam>
         /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
-        /// <returns>The message queue wrapper.</returns>
+        /// <returns>The message queue adapter.</returns>
         internal MessageQueueAdapter<T> SetupMessageType<T>(int batchSize) where T : class
         {
             lock (Gate)

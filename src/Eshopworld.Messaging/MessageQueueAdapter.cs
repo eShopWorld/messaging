@@ -73,7 +73,6 @@
         /// Sends a single message.
         /// </summary>
         /// <param name="message">The message we want to send.</param>
-        /// <returns>The async <see cref="Task"/> wrapper.</returns>
         internal async Task Send([NotNull]T message)
         {
             var qMessage = new Message(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(message)))
@@ -89,7 +88,6 @@
         /// [BATCHED] Read message call back.
         /// </summary>
         /// <param name="_">[Ignored]</param>
-        /// <returns>The async <see cref="Task"/> wrapper.</returns>
         internal async Task Read([CanBeNull]object _)
         {
             var messages = await Receiver.ReceiveAsync(BatchSize).ConfigureAwait(false);
@@ -110,7 +108,6 @@
         /// and we retain that lock until we finish handling the message.
         /// </summary>
         /// <param name="message">The message that we want to create the lock on.</param>
-        /// <returns>The async <see cref="Task"/> wrapper</returns>
         internal async Task Lock(T message)
         {
             await Receiver.RenewLockAsync(Messages[message]).ConfigureAwait(false);
@@ -128,7 +125,6 @@
         /// Completes a message by doing the actual READ from the queue.
         /// </summary>
         /// <param name="message">The message we want to complete.</param>
-        /// <returns>The async <see cref="Task"/> wrapper</returns>
         internal async Task Complete(T message)
         {
             await Receiver.CompleteAsync(Messages[message].SystemProperties.LockToken).ConfigureAwait(false);
@@ -139,7 +135,6 @@
         /// Abandons a message by returning it to the queue.
         /// </summary>
         /// <param name="message">The message we want to abandon.</param>
-        /// <returns>The async <see cref="Task"/> wrapper</returns>
         internal async Task Abandon(T message)
         {
             await Receiver.AbandonAsync(Messages[message].SystemProperties.LockToken).ConfigureAwait(false);
@@ -150,7 +145,6 @@
         /// Errors a message by moving it specifically to the error queue.
         /// </summary>
         /// <param name="message">The message that we want to move to the error queue.</param>
-        /// <returns>The async <see cref="Task"/> wrapper</returns>
         internal async Task Error(T message)
         {
             await Receiver.DeadLetterAsync(Messages[message].SystemProperties.LockToken).ConfigureAwait(false);

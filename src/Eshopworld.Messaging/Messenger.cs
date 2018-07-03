@@ -28,6 +28,13 @@
         internal Dictionary<Type, IDisposable> MessageSubs = new Dictionary<Type, IDisposable>();
         internal Dictionary<Type, MessageQueueAdapter> QueueAdapters = new Dictionary<Type, MessageQueueAdapter>();
 
+        internal MessageQueueAdapter<T> GetQueueAdapterIfExists<T>() where T : class
+        {
+            return QueueAdapters.TryGetValue(typeof(T), out var result)
+                ? (MessageQueueAdapter<T>)result
+                : throw new InvalidOperationException($"Messages of type {typeof(T).FullName} haven't been setup properly yet");
+        }
+
         /// <summary>
         /// Initializes a new instance of <see cref="Messenger"/>.
         /// </summary>
@@ -76,12 +83,7 @@
         {
             lock (Gate)
             {
-                if (!QueueAdapters.ContainsKey(typeof(T)))
-                {
-                    throw new InvalidOperationException($"Messages of type {typeof(T).FullName} haven't been setup properly yet");
-                }
-
-                ((MessageQueueAdapter<T>) QueueAdapters[typeof(T)]).StopReading();
+                GetQueueAdapterIfExists<T>().StopReading();
 
                 MessageSubs[typeof(T)].Dispose();
                 MessageSubs.Remove(typeof(T));
@@ -99,60 +101,31 @@
         /// <inheritdoc />
         public async Task Lock<T>(T message) where T : class
         {
-            if (!QueueAdapters.ContainsKey(typeof(T)))
-            {
-                throw new InvalidOperationException($"Messages of type {typeof(T).FullName} haven't been setup properly yet");
-            }
-
-            var adapter = (MessageQueueAdapter<T>) QueueAdapters[typeof(T)];
-            await adapter.Lock(message).ConfigureAwait(false);
+            await GetQueueAdapterIfExists<T>().Lock(message).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
         public async Task Complete<T>(T message) where T : class
         {
-            if (!QueueAdapters.ContainsKey(typeof(T)))
-            {
-                throw new InvalidOperationException($"Messages of type {typeof(T).FullName} haven't been setup properly yet");
-            }
-
-            var adapter = (MessageQueueAdapter<T>) QueueAdapters[typeof(T)];
-            await adapter.Complete(message).ConfigureAwait(false);
+            await GetQueueAdapterIfExists<T>().Complete(message).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
         public async Task Abandon<T>(T message) where T : class
         {
-            if (!QueueAdapters.ContainsKey(typeof(T)))
-            {
-                throw new InvalidOperationException($"Messages of type {typeof(T).FullName} haven't been setup properly yet");
-            }
-
-            var adapter = (MessageQueueAdapter<T>) QueueAdapters[typeof(T)];
-            await adapter.Abandon(message).ConfigureAwait(false);
+            await GetQueueAdapterIfExists<T>().Abandon(message).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
         public async Task Error<T>(T message) where T : class
         {
-            if (!QueueAdapters.ContainsKey(typeof(T)))
-            {
-                throw new InvalidOperationException($"Messages of type {typeof(T).FullName} haven't been setup properly yet");
-            }
-
-            var adapter = (MessageQueueAdapter<T>) QueueAdapters[typeof(T)];
-            await adapter.Error(message).ConfigureAwait(false);
+            await GetQueueAdapterIfExists<T>().Error(message).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
         public void SetBatchSize<T>(int batchSize) where T : class
         {
-            if (!QueueAdapters.ContainsKey(typeof(T)))
-            {
-                throw new InvalidOperationException($"Messages of type {typeof(T).FullName} haven't been setup properly yet");
-            }
-
-            ((MessageQueueAdapter<T>) QueueAdapters[typeof(T)]).SetBatchSize(batchSize);
+            GetQueueAdapterIfExists<T>().SetBatchSize(batchSize);
         }
 
         /// <summary>

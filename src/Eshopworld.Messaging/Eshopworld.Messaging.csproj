@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    
+    <Version>1.0.0</Version>
+    <PackageReleaseNotes>Initial add after package rebranding.</PackageReleaseNotes>
+
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+
+    <IsPackable>True</IsPackable>
+    <PackageId>Eshopworld.Messaging</PackageId>
+    <Authors>David Rodrigues</Authors>
+    <Company>eShopWorld</Company>
+    <PackageLicenseUrl>https://github.com/eShopWorld/messaging/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/eShopWorld/messaging</PackageProjectUrl>
+    <Description>eShopWorld messaging package</Description>
+    <Product>Eshopworld.Messaging</Product>
+    <Copyright>Copyright 2018</Copyright>
+    <PackageTags>Eshopworld, Messaging, ServiceBus, Azure</PackageTags>
+
+    <IncludeSource>True</IncludeSource>
+    <DebugType>Full</DebugType>
+
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="eshopworld.core" Version="1.1.0" />
+    <PackageReference Include="jetbrains.annotations" Version="11.1.0" />
+    <PackageReference Include="microsoft.azure.management.fluent" Version="1.11.1" />
+    <PackageReference Include="microsoft.azure.servicebus" Version="3.0.2" />
+    <PackageReference Include="system.reactive" Version="4.0.0" />
+  </ItemGroup>
+
+</Project>

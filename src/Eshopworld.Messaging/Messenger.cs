@@ -28,12 +28,10 @@
         internal Dictionary<Type, IDisposable> MessageSubs = new Dictionary<Type, IDisposable>();
         internal Dictionary<Type, MessageQueueAdapter> QueueAdapters = new Dictionary<Type, MessageQueueAdapter>();
 
-        internal MessageQueueAdapter<T> GetQueueAdapterIfExists<T>() where T : class
-        {
-            return QueueAdapters.TryGetValue(typeof(T), out var result)
-                ? (MessageQueueAdapter<T>)result
+        internal MessageQueueAdapter<T> GetQueueAdapterIfExists<T>() where T : class =>
+            QueueAdapters.TryGetValue(typeof(T), out var result)
+                ? (MessageQueueAdapter<T>) result
                 : throw new InvalidOperationException($"Messages of type {typeof(T).FullName} haven't been setup properly yet");
-        }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Messenger"/>.
@@ -99,34 +97,19 @@
         }
 
         /// <inheritdoc />
-        public async Task Lock<T>(T message) where T : class
-        {
-            await GetQueueAdapterIfExists<T>().Lock(message).ConfigureAwait(false);
-        }
+        public async Task Lock<T>(T message) where T : class => await GetQueueAdapterIfExists<T>().Lock(message).ConfigureAwait(false);
 
         /// <inheritdoc />
-        public async Task Complete<T>(T message) where T : class
-        {
-            await GetQueueAdapterIfExists<T>().Complete(message).ConfigureAwait(false);
-        }
+        public async Task Complete<T>(T message) where T : class => await GetQueueAdapterIfExists<T>().Complete(message).ConfigureAwait(false);
 
         /// <inheritdoc />
-        public async Task Abandon<T>(T message) where T : class
-        {
-            await GetQueueAdapterIfExists<T>().Abandon(message).ConfigureAwait(false);
-        }
+        public async Task Abandon<T>(T message) where T : class => await GetQueueAdapterIfExists<T>().Abandon(message).ConfigureAwait(false);
 
         /// <inheritdoc />
-        public async Task Error<T>(T message) where T : class
-        {
-            await GetQueueAdapterIfExists<T>().Error(message).ConfigureAwait(false);
-        }
+        public async Task Error<T>(T message) where T : class => await GetQueueAdapterIfExists<T>().Error(message).ConfigureAwait(false);
 
         /// <inheritdoc />
-        public void SetBatchSize<T>(int batchSize) where T : class
-        {
-            GetQueueAdapterIfExists<T>().SetBatchSize(batchSize);
-        }
+        public void SetBatchSize<T>(int batchSize) where T : class => GetQueueAdapterIfExists<T>().SetBatchSize(batchSize);
 
         /// <summary>
         /// Sets the messenger up for either sending or receiving a specific message of type <typeparamref name="T"/>.

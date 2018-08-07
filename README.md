@@ -1,4 +1,4 @@
-# devopsflex-messaging
+# eshopworld-messaging
 
 A very lightweight extension to Azure Service Bus queues and topics that abstracts consuming applications
 from the Bus or the Channel technology stack.

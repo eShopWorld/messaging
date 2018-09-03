@@ -36,7 +36,7 @@
             var queues = sbNamespace.Queues.List().ToList();
 
             queues.Count.Should().Be(1);
-            queues.SingleOrDefault(q => string.Equals(q.Name, type.GetQueueName(), StringComparison.CurrentCultureIgnoreCase)).Should().NotBeNull();
+            queues.SingleOrDefault(q => string.Equals(q.Name, type.GetEntityName(), StringComparison.CurrentCultureIgnoreCase)).Should().NotBeNull();
         }
     }
 }

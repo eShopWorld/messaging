@@ -75,7 +75,7 @@ public class MessengerTest
 
                 await Task.Delay(TimeSpan.FromSeconds(5)); // wait 5 seconds to flush out all the messages
 
-                var receiver = new MessageReceiver(ServiceBusFixture.ConfigSettings.ConnectionString, typeof(T).GetQueueName(), ReceiveMode.ReceiveAndDelete, null, sendCount);
+                var receiver = new MessageReceiver(ServiceBusFixture.ConfigSettings.ConnectionString, typeof(T).GetEntityName(), ReceiveMode.ReceiveAndDelete, null, sendCount);
                 var rMessages = (await receiver.ReadBatchAsync<T>(sendCount)).ToList();
 
                 rMessages.Should().BeEquivalentTo(messages);
@@ -107,7 +107,7 @@ public class MessengerTest
                         if (rMessages.Count == messages.Count) ts.Cancel(); // kill switch
                         });
 
-                var sender = new MessageSender(ServiceBusFixture.ConfigSettings.ConnectionString, typeof(T).GetQueueName());
+                var sender = new MessageSender(ServiceBusFixture.ConfigSettings.ConnectionString, typeof(T).GetEntityName());
                 await sender.WriteBatchAsync(messages);
 
                 try
@@ -242,7 +242,7 @@ public class MessengerTest
                 }
                 catch (TaskCanceledException) { /* soak the kill switch */ }
 
-                var receiver = new MessageReceiver(ServiceBusFixture.ConfigSettings.ConnectionString, EntityNameHelper.FormatDeadLetterPath(typeof(T).GetQueueName()), ReceiveMode.ReceiveAndDelete);
+                var receiver = new MessageReceiver(ServiceBusFixture.ConfigSettings.ConnectionString, EntityNameHelper.FormatDeadLetterPath(typeof(T).GetEntityName()), ReceiveMode.ReceiveAndDelete);
                 var rMessage = (await receiver.ReadBatchAsync<T>(1)).FirstOrDefault();
 
                 rMessage.Should().NotBeNull();

@@ -16,12 +16,10 @@
     /// Generics based message queue router from <see cref="IObservable{T}"/> through to the <see cref="QueueClient"/>.
     /// </summary>
     /// <typeparam name="T">The type of the message that we are routing.</typeparam>
-    internal sealed class MessageQueueAdapter<T> : ServiceBusAdapter
+    internal sealed class MessageTopicAdapter<T> : ServiceBusAdapter
         where T : class
     {
-        internal readonly IQueue AzureQueue;
-        internal readonly long LockInSeconds;
-        internal readonly long LockTickInSeconds;
+        internal readonly ITopic AzureTopic;
 
         internal readonly MessageReceiver Receiver;
         internal readonly MessageSender Sender;
@@ -29,6 +27,11 @@
         internal readonly IDictionary<T, Message> Messages = new Dictionary<T, Message>(ObjectReferenceEqualityComparer<T>.Default);
         internal readonly IDictionary<T, Timer> LockTimers = new Dictionary<T, Timer>(ObjectReferenceEqualityComparer<T>.Default);
         internal readonly IObserver<T> MessagesIn;
+
+        internal ISubscription AzureSubscription;
+        internal long LockInSeconds;
+        internal long LockTickInSeconds;
+
         internal Timer ReadTimer;
         internal int BatchSize = 10;
 
@@ -39,25 +42,27 @@
         /// <param name="subscriptionId">The ID of the subscription where the service bus namespace lives.</param>
         /// <param name="messagesIn">The <see cref="IObserver{IMessage}"/> used to push received messages into the pipeline.</param>
         /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
-        public MessageQueueAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize)
+        public MessageTopicAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize)
             : base(connectionString, subscriptionId, typeof(T))
         {
             MessagesIn = messagesIn;
 
-            AzureQueue = AzureServiceBusNamespace.CreateQueueIfNotExists(typeof(T).GetEntityName()).Result;
+            AzureTopic = AzureServiceBusNamespace.CreateTopicIfNotExists(typeof(T).GetEntityName()).Result;
 
-            LockInSeconds = AzureQueue.LockDurationInSeconds;
-            LockTickInSeconds = (long)Math.Floor(LockInSeconds * 0.8); // renew at 80% to cope with load
-
-            Receiver = new MessageReceiver(connectionString, AzureQueue.Name, ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3), batchSize);
-            Sender = new MessageSender(connectionString, AzureQueue.Name, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
+            Receiver = new MessageReceiver(connectionString, AzureTopic.Name, ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3), batchSize);
+            Sender = new MessageSender(connectionString, AzureTopic.Name, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
         }
 
         /// <summary>
         /// Starts pooling the queue in order to read messages in Peek Lock mode.
         /// </summary>
-        internal void StartReading()
+        /// <param name="subscriptionName">The name of the subscription that we want to read from.</param>
+        internal async Task StartReading(string subscriptionName)
         {
+            AzureSubscription = await AzureTopic.CreateSubscriptionIfNotExists(subscriptionName);
+            LockInSeconds = AzureSubscription.LockDurationInSeconds;
+            LockTickInSeconds = (long)Math.Floor(LockInSeconds * 0.8); // renew at 80% to cope with load
+
             if (ReadTimer != null) return;
 
             ReadTimer = new Timer(

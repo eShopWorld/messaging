@@ -26,7 +26,7 @@
         internal readonly ISubject<object> MessagesIn = new Subject<object>();
 
         internal Dictionary<Type, IDisposable> MessageSubs = new Dictionary<Type, IDisposable>();
-        internal Dictionary<Type, MessageQueueAdapter> QueueAdapters = new Dictionary<Type, MessageQueueAdapter>();
+        internal Dictionary<Type, ServiceBusAdapter> QueueAdapters = new Dictionary<Type, ServiceBusAdapter>();
 
         internal MessageQueueAdapter<T> GetQueueAdapterIfExists<T>() where T : class =>
             QueueAdapters.TryGetValue(typeof(T), out var result)
@@ -113,7 +113,7 @@
 
         /// <summary>
         /// Sets the messenger up for either sending or receiving a specific message of type <typeparamref name="T"/>.
-        /// This will create the <see cref="MessageQueueAdapter"/> but will not set it up for reading the queue.
+        /// This will create the <see cref="ServiceBusAdapter"/> but will not set it up for reading the queue.
         /// </summary>
         /// <typeparam name="T">The type of the message we are setting up.</typeparam>
         /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>

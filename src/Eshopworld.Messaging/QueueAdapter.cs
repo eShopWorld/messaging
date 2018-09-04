@@ -16,7 +16,7 @@
     /// Generics based message queue router from <see cref="IObservable{T}"/> through to the <see cref="QueueClient"/>.
     /// </summary>
     /// <typeparam name="T">The type of the message that we are routing.</typeparam>
-    internal sealed class MessageQueueAdapter<T> : ServiceBusAdapter
+    internal sealed class QueueAdapter<T> : ServiceBusAdapter
         where T : class
     {
         internal readonly IQueue AzureQueue;
@@ -33,13 +33,13 @@
         internal int BatchSize = 10;
 
         /// <summary>
-        /// Initializes a new instance of <see cref="MessageQueueAdapter{T}"/>.
+        /// Initializes a new instance of <see cref="QueueAdapter{T}"/>.
         /// </summary>
         /// <param name="connectionString">The Azure Service Bus connection string.</param>
         /// <param name="subscriptionId">The ID of the subscription where the service bus namespace lives.</param>
         /// <param name="messagesIn">The <see cref="IObserver{IMessage}"/> used to push received messages into the pipeline.</param>
         /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
-        public MessageQueueAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize)
+        public QueueAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize)
             : base(connectionString, subscriptionId, typeof(T))
         {
             MessagesIn = messagesIn;

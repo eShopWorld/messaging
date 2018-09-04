@@ -1,11 +1,9 @@
 ﻿namespace Eshopworld.Messaging
 {
     using System;
-    using System.Collections.Generic;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
-    using Core;
     using JetBrains.Annotations;
     using Microsoft.Azure.Management.ServiceBus.Fluent;
     using Microsoft.Azure.ServiceBus;
@@ -16,17 +14,12 @@
     /// Generics based message queue router from <see cref="IObservable{T}"/> through to the <see cref="QueueClient"/>.
     /// </summary>
     /// <typeparam name="T">The type of the message that we are routing.</typeparam>
-    internal sealed class MessageTopicAdapter<T> : ServiceBusAdapter
+    internal sealed class TopicAdapter<T> : ServiceBusAdapter<T>
         where T : class
     {
         internal readonly ITopic AzureTopic;
 
-        internal MessageReceiver Receiver;
         internal TopicClient Sender;
-
-        internal readonly IDictionary<T, Message> Messages = new Dictionary<T, Message>(ObjectReferenceEqualityComparer<T>.Default);
-        internal readonly IDictionary<T, Timer> LockTimers = new Dictionary<T, Timer>(ObjectReferenceEqualityComparer<T>.Default);
-        internal readonly IObserver<T> MessagesIn;
 
         internal readonly string ConnectionString;
 
@@ -34,23 +27,17 @@
         internal long LockInSeconds;
         internal long LockTickInSeconds;
 
-        internal Timer ReadTimer;
-        internal int BatchSize;
-
         /// <summary>
-        /// Initializes a new instance of <see cref="MessageQueueAdapter{T}"/>.
+        /// Initializes a new instance of <see cref="TopicAdapter{T}"/>.
         /// </summary>
         /// <param name="connectionString">The Azure Service Bus connection string.</param>
         /// <param name="subscriptionId">The ID of the subscription where the service bus namespace lives.</param>
         /// <param name="messagesIn">The <see cref="IObserver{IMessage}"/> used to push received messages into the pipeline.</param>
         /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
-        public MessageTopicAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize)
-            : base(connectionString, subscriptionId, typeof(T))
+        public TopicAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize)
+            : base(connectionString, subscriptionId, messagesIn, batchSize)
         {
-            MessagesIn = messagesIn;
-
             AzureTopic = AzureServiceBusNamespace.CreateTopicIfNotExists(typeof(T).GetEntityName()).Result;
-            BatchSize = batchSize;
             ConnectionString = connectionString;
 
             Sender = new TopicClient(connectionString, AzureTopic.Name, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
@@ -84,21 +71,6 @@
                 null,
                 TimeSpan.FromSeconds(1),
                 TimeSpan.FromSeconds(1));
-        }
-
-        /// <summary>
-        /// Stops pooling the queue for reading messages.
-        /// </summary>
-        internal async Task StopReading()
-        {
-            if (Receiver != null)
-            {
-                await Receiver.CloseAsync();
-                Receiver = null;
-            }
-
-            ReadTimer.Dispose();
-            ReadTimer = null;
         }
 
         /// <summary>
@@ -154,36 +126,6 @@
         }
 
         /// <summary>
-        /// Completes a message by doing the actual READ from the queue.
-        /// </summary>
-        /// <param name="message">The message we want to complete.</param>
-        internal async Task Complete(T message)
-        {
-            await Receiver.CompleteAsync(Messages[message].SystemProperties.LockToken).ConfigureAwait(false);
-            Release(message);
-        }
-
-        /// <summary>
-        /// Abandons a message by returning it to the queue.
-        /// </summary>
-        /// <param name="message">The message we want to abandon.</param>
-        internal async Task Abandon(T message)
-        {
-            await Receiver.AbandonAsync(Messages[message].SystemProperties.LockToken).ConfigureAwait(false);
-            Release(message);
-        }
-
-        /// <summary>
-        /// Errors a message by moving it specifically to the error queue.
-        /// </summary>
-        /// <param name="message">The message that we want to move to the error queue.</param>
-        internal async Task Error(T message)
-        {
-            await Receiver.DeadLetterAsync(Messages[message].SystemProperties.LockToken).ConfigureAwait(false);
-            Release(message);
-        }
-
-        /// <summary>
         /// Sets the size of the message batch during receives.
         /// </summary>
         /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
@@ -191,27 +133,6 @@
         {
             BatchSize = batchSize;
             Receiver.PrefetchCount = batchSize;
-        }
-
-        /// <summary>
-        /// Releases a message from the Queue by releasing all the specific message resources like lock
-        /// renewal timers.
-        /// This is called by all the methods that terminate the life of a message like COMPLETE, ABANDON and ERROR.
-        /// </summary>
-        /// <param name="message">The message that we want to release.</param>
-        internal void Release([NotNull]T message)
-        {
-            lock (Gate)
-            {
-                Messages.Remove(message);
-
-                // check for a lock renewal timer and release it if it exists
-                if (LockTimers.ContainsKey(message))
-                {
-                    LockTimers[message]?.Dispose();
-                    LockTimers.Remove(message);
-                }
-            }
         }
 
         /// <inheritdoc />

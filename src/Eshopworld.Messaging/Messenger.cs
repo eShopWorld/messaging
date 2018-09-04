@@ -28,9 +28,9 @@
         internal Dictionary<Type, IDisposable> MessageSubs = new Dictionary<Type, IDisposable>();
         internal Dictionary<Type, ServiceBusAdapter> QueueAdapters = new Dictionary<Type, ServiceBusAdapter>();
 
-        internal MessageQueueAdapter<T> GetQueueAdapterIfExists<T>() where T : class =>
+        internal QueueAdapter<T> GetQueueAdapterIfExists<T>() where T : class =>
             QueueAdapters.TryGetValue(typeof(T), out var result)
-                ? (MessageQueueAdapter<T>) result
+                ? (QueueAdapter<T>) result
                 : throw new InvalidOperationException($"Messages of type {typeof(T).FullName} haven't been setup properly yet");
 
         /// <summary>
@@ -53,7 +53,7 @@
                 SetupMessageType<T>(10);
             }
 
-            await ((MessageQueueAdapter<T>)QueueAdapters[typeof(T)]).Send(message).ConfigureAwait(false);
+            await ((QueueAdapter<T>)QueueAdapters[typeof(T)]).Send(message).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
@@ -118,18 +118,18 @@
         /// <typeparam name="T">The type of the message we are setting up.</typeparam>
         /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
         /// <returns>The message queue adapter.</returns>
-        internal MessageQueueAdapter<T> SetupMessageType<T>(int batchSize) where T : class
+        internal QueueAdapter<T> SetupMessageType<T>(int batchSize) where T : class
         {
             lock (Gate)
             {
                 if (!QueueAdapters.ContainsKey(typeof(T)))
                 {
-                    var queue = new MessageQueueAdapter<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver(), batchSize);
+                    var queue = new QueueAdapter<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver(), batchSize);
                     QueueAdapters.Add(typeof(T), queue);
                 }
             }
 
-            return (MessageQueueAdapter<T>)QueueAdapters[typeof(T)];
+            return (QueueAdapter<T>)QueueAdapters[typeof(T)];
         }
 
         /// <inheritdoc />

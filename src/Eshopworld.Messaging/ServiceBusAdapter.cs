@@ -1,16 +1,107 @@
 ﻿namespace Eshopworld.Messaging
 {
     using System;
+    using System.Collections.Generic;
     using System.Linq;
     using System.Text.RegularExpressions;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using Core;
     using JetBrains.Annotations;
     using Microsoft.Azure.Management.Fluent;
     using Microsoft.Azure.Management.ResourceManager.Fluent;
     using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
     using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
     using Microsoft.Azure.Management.ServiceBus.Fluent;
+    using Microsoft.Azure.ServiceBus;
+    using Microsoft.Azure.ServiceBus.Core;
     using Microsoft.Azure.Services.AppAuthentication;
     using Microsoft.Rest;
+
+    internal abstract class ServiceBusAdapter<T> : ServiceBusAdapter
+        where T : class
+    {
+        internal readonly IDictionary<T, Message> Messages = new Dictionary<T, Message>(ObjectReferenceEqualityComparer<T>.Default);
+        internal readonly IDictionary<T, Timer> LockTimers = new Dictionary<T, Timer>(ObjectReferenceEqualityComparer<T>.Default);
+        internal readonly IObserver<T> MessagesIn;
+
+        internal MessageReceiver Receiver;
+        internal Timer ReadTimer;
+        internal int BatchSize;
+
+        internal ServiceBusAdapter([NotNull] string connectionString, [NotNull] string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize)
+            : base(connectionString, subscriptionId, typeof(T))
+        {
+            MessagesIn = messagesIn;
+            BatchSize = batchSize;
+        }
+
+        /// <summary>
+        /// Releases a message from the Queue by releasing all the specific message resources like lock
+        /// renewal timers.
+        /// This is called by all the methods that terminate the life of a message like COMPLETE, ABANDON and ERROR.
+        /// </summary>
+        /// <param name="message">The message that we want to release.</param>
+        internal void Release([NotNull]T message)
+        {
+            lock (Gate)
+            {
+                Messages.Remove(message);
+
+                // check for a lock renewal timer and release it if it exists
+                if (LockTimers.ContainsKey(message))
+                {
+                    LockTimers[message]?.Dispose();
+                    LockTimers.Remove(message);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Completes a message by doing the actual READ from the queue.
+        /// </summary>
+        /// <param name="message">The message we want to complete.</param>
+        internal async Task Complete(T message)
+        {
+            await Receiver.CompleteAsync(Messages[message].SystemProperties.LockToken).ConfigureAwait(false);
+            Release(message);
+        }
+
+        /// <summary>
+        /// Abandons a message by returning it to the queue.
+        /// </summary>
+        /// <param name="message">The message we want to abandon.</param>
+        internal async Task Abandon(T message)
+        {
+            await Receiver.AbandonAsync(Messages[message].SystemProperties.LockToken).ConfigureAwait(false);
+            Release(message);
+        }
+
+        /// <summary>
+        /// Errors a message by moving it specifically to the error queue.
+        /// </summary>
+        /// <param name="message">The message that we want to move to the error queue.</param>
+        internal async Task Error(T message)
+        {
+            await Receiver.DeadLetterAsync(Messages[message].SystemProperties.LockToken).ConfigureAwait(false);
+            Release(message);
+        }
+
+        /// <summary>
+        /// Stops pooling the queue for reading messages.
+        /// </summary>
+        internal async Task StopReading()
+        {
+            if (Receiver != null)
+            {
+                await Receiver.CloseAsync();
+                Receiver = null;
+            }
+
+            ReadTimer.Dispose();
+            ReadTimer = null;
+        }
+    }
 
     /// <summary>
     /// Non generic message queue/topic router from <see cref="IObservable{IMessage}"/> through to the ServiceBus entities.
@@ -18,7 +109,6 @@
     internal abstract class ServiceBusAdapter : IDisposable
     {
         internal static IServiceBusNamespace AzureServiceBusNamespace;
-
         internal readonly object Gate = new object();
 
         /// <summary>

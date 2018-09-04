@@ -21,19 +21,21 @@
     {
         internal readonly ITopic AzureTopic;
 
-        internal readonly MessageReceiver Receiver;
-        internal readonly MessageSender Sender;
+        internal MessageReceiver Receiver;
+        internal TopicClient Sender;
 
         internal readonly IDictionary<T, Message> Messages = new Dictionary<T, Message>(ObjectReferenceEqualityComparer<T>.Default);
         internal readonly IDictionary<T, Timer> LockTimers = new Dictionary<T, Timer>(ObjectReferenceEqualityComparer<T>.Default);
         internal readonly IObserver<T> MessagesIn;
+
+        internal readonly string ConnectionString;
 
         internal ISubscription AzureSubscription;
         internal long LockInSeconds;
         internal long LockTickInSeconds;
 
         internal Timer ReadTimer;
-        internal int BatchSize = 10;
+        internal int BatchSize;
 
         /// <summary>
         /// Initializes a new instance of <see cref="MessageQueueAdapter{T}"/>.
@@ -48,9 +50,10 @@
             MessagesIn = messagesIn;
 
             AzureTopic = AzureServiceBusNamespace.CreateTopicIfNotExists(typeof(T).GetEntityName()).Result;
+            BatchSize = batchSize;
+            ConnectionString = connectionString;
 
-            Receiver = new MessageReceiver(connectionString, AzureTopic.Name, ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3), batchSize);
-            Sender = new MessageSender(connectionString, AzureTopic.Name, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
+            Sender = new TopicClient(connectionString, AzureTopic.Name, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
         }
 
         /// <summary>
@@ -59,6 +62,17 @@
         /// <param name="subscriptionName">The name of the subscription that we want to read from.</param>
         internal async Task StartReading(string subscriptionName)
         {
+            if (Receiver != null)
+            {
+                try
+                {
+                    await Receiver.CloseAsync();
+                }
+                catch { /*soak*/ } // if it's already closed, Close() will throw. This is here for cases where StartReading is called in succession without calling StopReading.
+            }
+
+            Receiver = new MessageReceiver(ConnectionString, EntityNameHelper.FormatSubscriptionPath(AzureTopic.Name, subscriptionName), ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3), BatchSize);
+
             AzureSubscription = await AzureTopic.CreateSubscriptionIfNotExists(subscriptionName);
             LockInSeconds = AzureSubscription.LockDurationInSeconds;
             LockTickInSeconds = (long)Math.Floor(LockInSeconds * 0.8); // renew at 80% to cope with load
@@ -75,8 +89,14 @@
         /// <summary>
         /// Stops pooling the queue for reading messages.
         /// </summary>
-        internal void StopReading()
+        internal async Task StopReading()
         {
+            if (Receiver != null)
+            {
+                await Receiver.CloseAsync();
+                Receiver = null;
+            }
+
             ReadTimer.Dispose();
             ReadTimer = null;
         }

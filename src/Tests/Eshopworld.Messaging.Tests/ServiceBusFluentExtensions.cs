@@ -30,6 +30,11 @@
             }
         }
 
+        /// <summary>
+        /// Checks if a given queue exists to facilitate tests that scorch the namespace and check if the queue was properly created.
+        /// </summary>
+        /// <param name="sbNamespace">The <see cref="IServiceBusNamespace"/> that we are checking in.</param>
+        /// <param name="type">The message <see cref="Type"/> that we are checking the queue for.</param>
         public static void AssertSingleQueueExists(this IServiceBusNamespace sbNamespace, Type type)
         {
             sbNamespace.Refresh();

@@ -17,19 +17,19 @@
 
     public class AzureServiceBusFixture
     {
-        internal const string KeyvaultUriName = "TEST_KEYVAULT_URI";
+        internal const string KeyVaultUriName = "TEST_KEYVAULT_URI";
         internal readonly IServiceBusNamespace ServiceBusNamespace;
         internal readonly MessagingSettings ConfigSettings = new MessagingSettings();
 
         public AzureServiceBusFixture()
         {
-            var keyvaultUri = (Environment.GetEnvironmentVariable(KeyvaultUriName, EnvironmentVariableTarget.Machine) ??
-                               Environment.GetEnvironmentVariable(KeyvaultUriName, EnvironmentVariableTarget.User)) ??
-                               Environment.GetEnvironmentVariable(KeyvaultUriName, EnvironmentVariableTarget.Process);
+            var keyVaultUri = (Environment.GetEnvironmentVariable(KeyVaultUriName, EnvironmentVariableTarget.Machine) ??
+                               Environment.GetEnvironmentVariable(KeyVaultUriName, EnvironmentVariableTarget.User)) ??
+                               Environment.GetEnvironmentVariable(KeyVaultUriName, EnvironmentVariableTarget.Process);
 
             var tokenProvider = new AzureServiceTokenProvider();
             var config = new ConfigurationBuilder().AddAzureKeyVault(
-                                                       keyvaultUri,
+                                                       keyVaultUri,
                                                        new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(tokenProvider.KeyVaultTokenCallback)),
                                                        new DefaultKeyVaultSecretManager())
                                                    .Build();
@@ -63,7 +63,7 @@
     public class AzureServiceBusCollection : ICollectionFixture<AzureServiceBusFixture> { }
 
     /// <summary>
-    /// Binder POCO for the <see cref="ConfigurationBuilder"/> to the keyvault settings:
+    /// Binder POCO for the <see cref="ConfigurationBuilder"/> to the KeyVault settings:
     ///     --ConnectionString
     ///     --SubscriptionId
     /// </summary>

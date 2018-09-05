@@ -139,7 +139,7 @@
         {
             if (Receiver != null)
             {
-                await Receiver.CloseAsync();
+                await Receiver.CloseAsync().ConfigureAwait(false);
                 Receiver = null;
             }
 

@@ -18,14 +18,8 @@
         where T : class
     {
         internal readonly ITopic AzureTopic;
-
         internal TopicClient Sender;
-
-        internal readonly string ConnectionString;
-
         internal ISubscription AzureSubscription;
-        internal long LockInSeconds;
-        internal long LockTickInSeconds;
 
         /// <summary>
         /// Initializes a new instance of <see cref="TopicAdapter{T}"/>.
@@ -38,8 +32,6 @@
             : base(connectionString, subscriptionId, messagesIn, batchSize)
         {
             AzureTopic = AzureServiceBusNamespace.CreateTopicIfNotExists(typeof(T).GetEntityName()).Result;
-            ConnectionString = connectionString;
-
             Sender = new TopicClient(connectionString, AzureTopic.Name, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
         }
 
@@ -88,60 +80,12 @@
             await Sender.SendAsync(qMessage).ConfigureAwait(false);
         }
 
-        /// <summary>
-        /// [BATCHED] Read message call back.
-        /// </summary>
-        /// <param name="_">[Ignored]</param>
-        internal async Task Read([CanBeNull]object _)
-        {
-            var messages = await Receiver.ReceiveAsync(BatchSize).ConfigureAwait(false);
-            if (messages == null) return;
-
-            foreach (var message in messages)
-            {
-                var messageBody = JsonConvert.DeserializeObject<T>(Encoding.UTF8.GetString(message.Body));
-
-                Messages[messageBody] = message;
-                MessagesIn.OnNext(messageBody);
-            }
-        }
-
-        /// <summary>
-        /// Creates a perpetual lock on a message by continuously renewing it's lock.
-        /// This is usually created at the start of a handler so that we guarantee that we still have a valid lock
-        /// and we retain that lock until we finish handling the message.
-        /// </summary>
-        /// <param name="message">The message that we want to create the lock on.</param>
-        internal async Task Lock(T message)
-        {
-            await Receiver.RenewLockAsync(Messages[message]).ConfigureAwait(false);
-
-            LockTimers.Add(
-                message,
-                new Timer(
-                    async _ => { await Receiver.RenewLockAsync(Messages[message]).ConfigureAwait(false); },
-                    null,
-                    TimeSpan.FromSeconds(LockTickInSeconds),
-                    TimeSpan.FromSeconds(LockTickInSeconds)));
-        }
-
-        /// <summary>
-        /// Sets the size of the message batch during receives.
-        /// </summary>
-        /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
-        internal void SetBatchSize(int batchSize)
-        {
-            BatchSize = batchSize;
-            Receiver.PrefetchCount = batchSize;
-        }
-
         /// <inheritdoc />
         public override void Dispose()
         {
-            Receiver.CloseAsync().Wait();
             Sender.CloseAsync().Wait();
 
-            ReadTimer?.Dispose();
+            base.Dispose();
         }
     }
 }

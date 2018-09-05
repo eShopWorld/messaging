@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Text;
     using System.Text.RegularExpressions;
     using System.Threading;
     using System.Threading.Tasks;
@@ -17,6 +18,7 @@
     using Microsoft.Azure.ServiceBus.Core;
     using Microsoft.Azure.Services.AppAuthentication;
     using Microsoft.Rest;
+    using Newtonsoft.Json;
 
     internal abstract class ServiceBusAdapter<T> : ServiceBusAdapter
         where T : class
@@ -29,11 +31,17 @@
         internal Timer ReadTimer;
         internal int BatchSize;
 
+        internal readonly string ConnectionString;
+
+        internal long LockInSeconds;
+        internal long LockTickInSeconds;
+
         internal ServiceBusAdapter([NotNull] string connectionString, [NotNull] string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize)
             : base(connectionString, subscriptionId, typeof(T))
         {
             MessagesIn = messagesIn;
             BatchSize = batchSize;
+            ConnectionString = connectionString;
         }
 
         /// <summary>
@@ -88,6 +96,43 @@
         }
 
         /// <summary>
+        /// Creates a perpetual lock on a message by continuously renewing it's lock.
+        /// This is usually created at the start of a handler so that we guarantee that we still have a valid lock
+        /// and we retain that lock until we finish handling the message.
+        /// </summary>
+        /// <param name="message">The message that we want to create the lock on.</param>
+        internal async Task Lock(T message)
+        {
+            await Receiver.RenewLockAsync(Messages[message]).ConfigureAwait(false);
+
+            LockTimers.Add(
+                message,
+                new Timer(
+                    async _ => { await Receiver.RenewLockAsync(Messages[message]).ConfigureAwait(false); },
+                    null,
+                    TimeSpan.FromSeconds(LockTickInSeconds),
+                    TimeSpan.FromSeconds(LockTickInSeconds)));
+        }
+
+        /// <summary>
+        /// [BATCHED] Read message call back.
+        /// </summary>
+        /// <param name="_">[Ignored]</param>
+        internal async Task Read([CanBeNull]object _)
+        {
+            var messages = await Receiver.ReceiveAsync(BatchSize).ConfigureAwait(false);
+            if (messages == null) return;
+
+            foreach (var message in messages)
+            {
+                var messageBody = JsonConvert.DeserializeObject<T>(Encoding.UTF8.GetString(message.Body));
+
+                Messages[messageBody] = message;
+                MessagesIn.OnNext(messageBody);
+            }
+        }
+
+        /// <summary>
         /// Stops pooling the queue for reading messages.
         /// </summary>
         internal async Task StopReading()
@@ -100,6 +145,23 @@
 
             ReadTimer.Dispose();
             ReadTimer = null;
+        }
+
+        /// <summary>
+        /// Sets the size of the message batch during receives.
+        /// </summary>
+        /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
+        internal void SetBatchSize(int batchSize)
+        {
+            BatchSize = batchSize;
+            Receiver.PrefetchCount = batchSize;
+        }
+
+        /// <inheritdoc />
+        public override void Dispose()
+        {
+            Receiver.CloseAsync().Wait();
+            ReadTimer?.Dispose();
         }
     }
 

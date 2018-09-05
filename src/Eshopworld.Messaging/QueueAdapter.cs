@@ -1,11 +1,9 @@
 ﻿namespace Eshopworld.Messaging
 {
     using System;
-    using System.Collections.Generic;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
-    using Core;
     using JetBrains.Annotations;
     using Microsoft.Azure.Management.ServiceBus.Fluent;
     using Microsoft.Azure.ServiceBus;
@@ -16,21 +14,11 @@
     /// Generics based message queue router from <see cref="IObservable{T}"/> through to the <see cref="QueueClient"/>.
     /// </summary>
     /// <typeparam name="T">The type of the message that we are routing.</typeparam>
-    internal sealed class QueueAdapter<T> : ServiceBusAdapter
+    internal sealed class QueueAdapter<T> : ServiceBusAdapter<T>
         where T : class
     {
         internal readonly IQueue AzureQueue;
-        internal readonly long LockInSeconds;
-        internal readonly long LockTickInSeconds;
-
-        internal readonly MessageReceiver Receiver;
         internal readonly MessageSender Sender;
-
-        internal readonly IDictionary<T, Message> Messages = new Dictionary<T, Message>(ObjectReferenceEqualityComparer<T>.Default);
-        internal readonly IDictionary<T, Timer> LockTimers = new Dictionary<T, Timer>(ObjectReferenceEqualityComparer<T>.Default);
-        internal readonly IObserver<T> MessagesIn;
-        internal Timer ReadTimer;
-        internal int BatchSize = 10;
 
         /// <summary>
         /// Initializes a new instance of <see cref="QueueAdapter{T}"/>.
@@ -40,10 +28,8 @@
         /// <param name="messagesIn">The <see cref="IObserver{IMessage}"/> used to push received messages into the pipeline.</param>
         /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
         public QueueAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize)
-            : base(connectionString, subscriptionId, typeof(T))
+            : base(connectionString, subscriptionId, messagesIn, batchSize)
         {
-            MessagesIn = messagesIn;
-
             AzureQueue = AzureServiceBusNamespace.CreateQueueIfNotExists(typeof(T).GetEntityName()).Result;
 
             LockInSeconds = AzureQueue.LockDurationInSeconds;
@@ -68,15 +54,6 @@
         }
 
         /// <summary>
-        /// Stops pooling the queue for reading messages.
-        /// </summary>
-        internal void StopReading()
-        {
-            ReadTimer.Dispose();
-            ReadTimer = null;
-        }
-
-        /// <summary>
         /// Sends a single message.
         /// </summary>
         /// <param name="message">The message we want to send.</param>
@@ -89,104 +66,6 @@
             };
 
             await Sender.SendAsync(qMessage).ConfigureAwait(false);
-        }
-
-        /// <summary>
-        /// [BATCHED] Read message call back.
-        /// </summary>
-        /// <param name="_">[Ignored]</param>
-        internal async Task Read([CanBeNull]object _)
-        {
-            var messages = await Receiver.ReceiveAsync(BatchSize).ConfigureAwait(false);
-            if (messages == null) return;
-
-            foreach (var message in messages)
-            {
-                var messageBody = JsonConvert.DeserializeObject<T>(Encoding.UTF8.GetString(message.Body));
-
-                Messages[messageBody] = message;
-                MessagesIn.OnNext(messageBody);
-            }
-        }
-
-        /// <summary>
-        /// Creates a perpetual lock on a message by continuously renewing it's lock.
-        /// This is usually created at the start of a handler so that we guarantee that we still have a valid lock
-        /// and we retain that lock until we finish handling the message.
-        /// </summary>
-        /// <param name="message">The message that we want to create the lock on.</param>
-        internal async Task Lock(T message)
-        {
-            await Receiver.RenewLockAsync(Messages[message]).ConfigureAwait(false);
-
-            LockTimers.Add(
-                message,
-                new Timer(
-                    async _ => { await Receiver.RenewLockAsync(Messages[message]).ConfigureAwait(false); },
-                    null,
-                    TimeSpan.FromSeconds(LockTickInSeconds),
-                    TimeSpan.FromSeconds(LockTickInSeconds)));
-        }
-
-        /// <summary>
-        /// Completes a message by doing the actual READ from the queue.
-        /// </summary>
-        /// <param name="message">The message we want to complete.</param>
-        internal async Task Complete(T message)
-        {
-            await Receiver.CompleteAsync(Messages[message].SystemProperties.LockToken).ConfigureAwait(false);
-            Release(message);
-        }
-
-        /// <summary>
-        /// Abandons a message by returning it to the queue.
-        /// </summary>
-        /// <param name="message">The message we want to abandon.</param>
-        internal async Task Abandon(T message)
-        {
-            await Receiver.AbandonAsync(Messages[message].SystemProperties.LockToken).ConfigureAwait(false);
-            Release(message);
-        }
-
-        /// <summary>
-        /// Errors a message by moving it specifically to the error queue.
-        /// </summary>
-        /// <param name="message">The message that we want to move to the error queue.</param>
-        internal async Task Error(T message)
-        {
-            await Receiver.DeadLetterAsync(Messages[message].SystemProperties.LockToken).ConfigureAwait(false);
-            Release(message);
-        }
-
-        /// <summary>
-        /// Sets the size of the message batch during receives.
-        /// </summary>
-        /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
-        internal void SetBatchSize(int batchSize)
-        {
-            BatchSize = batchSize;
-            Receiver.PrefetchCount = batchSize;
-        }
-
-        /// <summary>
-        /// Releases a message from the Queue by releasing all the specific message resources like lock
-        /// renewal timers.
-        /// This is called by all the methods that terminate the life of a message like COMPLETE, ABANDON and ERROR.
-        /// </summary>
-        /// <param name="message">The message that we want to release.</param>
-        internal void Release([NotNull]T message)
-        {
-            lock (Gate)
-            {
-                Messages.Remove(message);
-
-                // check for a lock renewal timer and release it if it exists
-                if (LockTimers.ContainsKey(message))
-                {
-                    LockTimers[message]?.Dispose();
-                    LockTimers.Remove(message);
-                }
-            }
         }
 
         /// <inheritdoc />

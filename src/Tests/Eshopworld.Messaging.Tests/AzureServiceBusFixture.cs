@@ -15,12 +15,20 @@
     using Microsoft.Rest;
     using Xunit;
 
+    /// <summary>
+    /// To be used on tests that manipulate entities in Azure Service Bus through the fluent SDK.
+    ///     Finds and caches the correct instance of <see cref="IServiceBusNamespace"/> to use when
+    ///     manipulating entities inside the namespace.
+    /// </summary>
     public class AzureServiceBusFixture
     {
         internal const string KeyVaultUriName = "TEST_KEYVAULT_URI";
         internal readonly IServiceBusNamespace ServiceBusNamespace;
         internal readonly MessagingSettings ConfigSettings = new MessagingSettings();
 
+        /// <summary>
+        /// Initializes a new instance of <see cref="AzureServiceBusFixture"/>.
+        /// </summary>
         public AzureServiceBusFixture()
         {
             var keyVaultUri = (Environment.GetEnvironmentVariable(KeyVaultUriName, EnvironmentVariableTarget.Machine) ??
@@ -59,6 +67,9 @@
         }
     }
 
+    /// <summary>
+    /// Collection object that the tests will reference by nameof()
+    /// </summary>
     [CollectionDefinition(nameof(AzureServiceBusCollection))]
     public class AzureServiceBusCollection : ICollectionFixture<AzureServiceBusFixture> { }
 

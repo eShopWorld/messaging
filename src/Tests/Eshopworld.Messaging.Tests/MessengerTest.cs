@@ -7,17 +7,11 @@ using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.ServiceBus.Core;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-[SuppressMessage(
-    category: "Usage",
-    checkId: "xUnit1026:Theory methods should use all of their parameters",
-    Justification = "They are discards to inject member data as a generics type parameter",
-    Scope = "type")]
 // ReSharper disable once CheckNamespace
 // ReSharper disable AccessToDisposedClosure
 [Collection(nameof(AzureServiceBusCollection))]

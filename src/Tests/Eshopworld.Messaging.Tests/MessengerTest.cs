@@ -1,16 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Eshopworld.Core;
+﻿using Eshopworld.Core;
 using Eshopworld.Messaging;
 using Eshopworld.Messaging.Tests;
 using Eshopworld.Tests.Core;
 using FluentAssertions;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.ServiceBus.Core;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 [SuppressMessage(
@@ -20,248 +20,224 @@ using Xunit;
     Scope = "type")]
 // ReSharper disable once CheckNamespace
 // ReSharper disable AccessToDisposedClosure
+[Collection(nameof(AzureServiceBusCollection))]
 public class MessengerTest
 {
-    [Collection(nameof(AzureServiceBusCollection))]
-    public class Integration
+    internal readonly AzureServiceBusFixture ServiceBusFixture;
+
+    public MessengerTest(AzureServiceBusFixture serviceBusFixture)
     {
-        internal readonly AzureServiceBusFixture ServiceBusFixture;
+        ServiceBusFixture = serviceBusFixture;
+    }
 
-        public Integration(AzureServiceBusFixture serviceBusFixture)
+    [Fact, IsIntegration]
+    public async Task Test_SendCreatesTheQueue()
+    {
+        await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
+
+        using (IMessenger msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
         {
-            ServiceBusFixture = serviceBusFixture;
+            await msn.Send(new TestMessage());
+            ServiceBusFixture.ServiceBusNamespace.AssertSingleQueueExists(typeof(TestMessage));
         }
+    }
 
-        [Theory, IsIntegration]
-        [MemberData(nameof(GetData_TestMessageTypes))]
-        public async Task Test_SendCreatesTheQueue<T>(T _)
-            where T : class, new()
+    [Fact, IsIntegration]
+    public async Task Test_ReceiveCreatesTheQueue()
+    {
+        await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
+
+        using (IMessenger msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
         {
-            await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
-
-            using (IMessenger msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
-            {
-                await msn.Send(new T());
-                ServiceBusFixture.ServiceBusNamespace.AssertSingleQueueExists(typeof(T));
-            }
+            msn.Receive<TestMessage>(__ => { });
+            ServiceBusFixture.ServiceBusNamespace.AssertSingleQueueExists(typeof(TestMessage));
         }
+    }
 
-        [Theory, IsIntegration]
-        [MemberData(nameof(GetData_TestMessageTypes))]
-        public async Task Test_ReceiveCreatesTheQueue<T>(T _)
-            where T : class, new()
+    [Fact, IsIntegration]
+    public async Task Test_SendingRandomMessages()
+    {
+        var sendCount = new Random().Next(1, 10);
+
+        await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
+
+        var messages = new List<TestMessage>();
+        for (var i = 0; i < sendCount; i++) { messages.Add(new TestMessage()); }
+
+        using (IMessenger msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
         {
-            await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
-
-            using (IMessenger msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
+            foreach (var message in messages)
             {
-                msn.Receive<T>(__ => { });
-                ServiceBusFixture.ServiceBusNamespace.AssertSingleQueueExists(typeof(T));
-            }
-        }
-
-        [Theory, IsIntegration]
-        [MemberData(nameof(GetData_TestMessageTypes))]
-        public async Task Test_SendingRandomMessages<T>(T _)
-            where T : class, new()
-        {
-            var sendCount = new Random().Next(1, 10);
-
-            await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
-
-            var messages = new List<T>();
-            for (var i = 0; i < sendCount; i++) { messages.Add(new T()); }
-
-            using (IMessenger msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
-            {
-                foreach (var message in messages)
-                {
-                    await msn.Send(message);
-                }
-
-                await Task.Delay(TimeSpan.FromSeconds(5)); // wait 5 seconds to flush out all the messages
-
-                var receiver = new MessageReceiver(ServiceBusFixture.ConfigSettings.ConnectionString, typeof(T).GetEntityName(), ReceiveMode.ReceiveAndDelete, null, sendCount);
-                var rMessages = (await receiver.ReadBatchAsync<T>(sendCount)).ToList();
-
-                rMessages.Should().BeEquivalentTo(messages);
-            }
-        }
-
-        [Theory, IsIntegration]
-        [MemberData(nameof(GetData_TestMessageTypes))]
-        public async Task Test_ReceivingRandomMessages<T>(T _)
-            where T : class, new()
-        {
-            var receiveCount = new Random().Next(1, 10);
-            await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
-
-            var rMessages = new List<T>();
-            var messages = new List<T>();
-            for (var i = 0; i < receiveCount; i++) { messages.Add(new T()); }
-
-            using (var ts = new CancellationTokenSource())
-            using (IMessenger msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
-            {
-                // We need to create the messenger before sending the messages to avoid writing unecessary code to create the queue
-                // during the test. Receive will create the queue automatically. This breaks the AAA pattern by design.
-                // This test flow also ensures that receive will actually create the queue properly.
-                msn.Receive<T>(
-                    m =>
-                    {
-                        rMessages.Add(m);
-                        if (rMessages.Count == messages.Count) ts.Cancel(); // kill switch
-                        });
-
-                var sender = new MessageSender(ServiceBusFixture.ConfigSettings.ConnectionString, typeof(T).GetEntityName());
-                await sender.WriteBatchAsync(messages);
-
-                try
-                {
-                    await Task.Delay(TimeSpan.FromMinutes(2), ts.Token);
-                }
-                catch (TaskCanceledException) { /* soak the kill switch */ }
-
-                rMessages.Should().BeEquivalentTo(messages);
-            }
-        }
-
-        [Theory, IsIntegration]
-        [MemberData(nameof(GetData_TestMessageTypes))]
-        public async Task Test_LockMessage_ForFiveMinutes<T>(T _)
-            where T : class, new() // be careful with this, if the test doesn't run it's because the T validation is broken
-        {
-            await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
-
-            using (IMessenger msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
-            {
-                await msn.Send(new T());
-
-                var message = default(T);
-                msn.Receive<T>(
-                    async m =>
-                    {
-                        message = m;
-                        await msn.Lock(m);
-                    });
-
-                await Task.Delay(TimeSpan.FromMinutes(5));
-
-                message.Should().NotBeNull();
-                await msn.Complete(message); // If this throws, Lock failed
-            }
-        }
-
-        [Theory, IsIntegration]
-        [MemberData(nameof(GetData_TestMessageTypes))]
-        public async Task Test_LockAbandon_MessageFlow<T>(T _)
-            where T : class, new() // be careful with this, if the test doesn't run it's because the T validation is broken
-        {
-            await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
-
-            using (var ts = new CancellationTokenSource())
-            using (var msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
-            {
-                await msn.Send(new T());
-
-                msn.Receive<T>(
-                    async m =>
-                    {
-                        await msn.Lock(m);
-                        msn.CancelReceive<T>();
-                        await Task.Delay(TimeSpan.FromSeconds(5), ts.Token);
-                        await msn.Abandon(m);
-
-                        ts.Cancel(); // kill switch
-                        });
-
-                try
-                {
-                    await Task.Delay(TimeSpan.FromMinutes(2), ts.Token);
-                }
-                catch (TaskCanceledException) { /* soak the kill switch */ }
-
-                ((QueueAdapter<T>)msn.QueueAdapters[typeof(T)]).Messages.Should().BeEmpty();
-                ((QueueAdapter<T>)msn.QueueAdapters[typeof(T)]).LockTimers.Should().BeEmpty();
-            }
-        }
-
-        [Theory, IsIntegration]
-        [MemberData(nameof(GetData_TestMessageTypes))]
-        public async Task Test_LockComplete_MessageFlow<T>(T _)
-            where T : class, new() // be careful with this, if the test doesn't run it's because the T validation is broken
-        {
-            await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
-
-            using (var ts = new CancellationTokenSource())
-            using (var msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
-            {
-                await msn.Send(new T());
-
-                msn.Receive<T>(
-                    async m =>
-                    {
-                        await msn.Lock(m);
-                        await Task.Delay(TimeSpan.FromSeconds(5), ts.Token);
-                        await msn.Complete(m);
-
-                        ts.Cancel(); // kill switch
-                        });
-
-                try
-                {
-                    await Task.Delay(TimeSpan.FromMinutes(2), ts.Token);
-                }
-                catch (TaskCanceledException) { /* soak the kill switch */ }
-
-                ((QueueAdapter<T>)msn.QueueAdapters[typeof(T)]).Messages.Should().BeEmpty();
-                ((QueueAdapter<T>)msn.QueueAdapters[typeof(T)]).LockTimers.Should().BeEmpty();
-            }
-        }
-
-        [Theory, IsIntegration]
-        [MemberData(nameof(GetData_TestMessageTypes))]
-        public async Task Test_LockError_MessageFlow<T>(T _)
-            where T : class, new() // be careful with this, if the test doesn't run it's because the T validation is broken
-        {
-            await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
-
-            using (var ts = new CancellationTokenSource())
-            using (var msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
-            {
-                var message = new T();
                 await msn.Send(message);
-
-                msn.Receive<T>(
-                    async m =>
-                    {
-                        await msn.Lock(m);
-                        await Task.Delay(TimeSpan.FromSeconds(5), ts.Token);
-                        await msn.Error(m);
-
-                        ts.Cancel(); // kill switch
-                        });
-
-                try
-                {
-                    await Task.Delay(TimeSpan.FromMinutes(2), ts.Token);
-                }
-                catch (TaskCanceledException) { /* soak the kill switch */ }
-
-                var receiver = new MessageReceiver(ServiceBusFixture.ConfigSettings.ConnectionString, EntityNameHelper.FormatDeadLetterPath(typeof(T).GetEntityName()), ReceiveMode.ReceiveAndDelete);
-                var rMessage = (await receiver.ReadBatchAsync<T>(1)).FirstOrDefault();
-
-                rMessage.Should().NotBeNull();
-                rMessage.Should().BeEquivalentTo(message);
-
-                ((QueueAdapter<T>)msn.QueueAdapters[typeof(T)]).Messages.Should().BeEmpty();
-                ((QueueAdapter<T>)msn.QueueAdapters[typeof(T)]).LockTimers.Should().BeEmpty();
             }
-        }
 
-        public static IEnumerable<object[]> GetData_TestMessageTypes()
+            await Task.Delay(TimeSpan.FromSeconds(5)); // wait 5 seconds to flush out all the messages
+
+            var receiver = new MessageReceiver(ServiceBusFixture.ConfigSettings.ConnectionString, typeof(TestMessage).GetEntityName(), ReceiveMode.ReceiveAndDelete, null, sendCount);
+            var rMessages = (await receiver.ReadBatchAsync<TestMessage>(sendCount)).ToList();
+
+            rMessages.Should().BeEquivalentTo(messages);
+        }
+    }
+
+    [Fact, IsIntegration]
+    public async Task Test_ReceivingRandomMessages()
+    {
+        var receiveCount = new Random().Next(1, 10);
+        await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
+
+        var rMessages = new List<TestMessage>();
+        var messages = new List<TestMessage>();
+        for (var i = 0; i < receiveCount; i++) { messages.Add(new TestMessage()); }
+
+        using (var ts = new CancellationTokenSource())
+        using (IMessenger msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
         {
-            yield return new object[] { new TestMessage() };
+            // We need to create the messenger before sending the messages to avoid writing unecessary code to create the queue
+            // during the test. Receive will create the queue automatically. This breaks the AAA pattern by design.
+            // This test flow also ensures that receive will actually create the queue properly.
+            msn.Receive<TestMessage>(
+                m =>
+                {
+                    rMessages.Add(m);
+                    if (rMessages.Count == messages.Count) ts.Cancel(); // kill switch
+                });
+
+            var sender = new MessageSender(ServiceBusFixture.ConfigSettings.ConnectionString, typeof(TestMessage).GetEntityName());
+            await sender.WriteBatchAsync(messages);
+
+            try
+            {
+                await Task.Delay(TimeSpan.FromMinutes(2), ts.Token);
+            }
+            catch (TaskCanceledException) { /* soak the kill switch */ }
+
+            rMessages.Should().BeEquivalentTo(messages);
+        }
+    }
+
+    [Fact, IsIntegration]
+    public async Task Test_LockMessage_ForFiveMinutes()
+    {
+        await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
+
+        using (IMessenger msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
+        {
+            await msn.Send(new TestMessage());
+
+            var message = default(TestMessage);
+            msn.Receive<TestMessage>(
+                async m =>
+                {
+                    message = m;
+                    await msn.Lock(m);
+                });
+
+            await Task.Delay(TimeSpan.FromMinutes(5));
+
+            message.Should().NotBeNull();
+            await msn.Complete(message); // If this throws, Lock failed
+        }
+    }
+
+    [Fact, IsIntegration]
+    public async Task Test_LockAbandon_MessageFlow()
+    {
+        await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
+
+        using (var ts = new CancellationTokenSource())
+        using (var msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
+        {
+            await msn.Send(new TestMessage());
+
+            msn.Receive<TestMessage>(
+                async m =>
+                {
+                    await msn.Lock(m);
+                    msn.CancelReceive<TestMessage>();
+                    await Task.Delay(TimeSpan.FromSeconds(5), ts.Token);
+                    await msn.Abandon(m);
+
+                    ts.Cancel(); // kill switch
+                });
+
+            try
+            {
+                await Task.Delay(TimeSpan.FromMinutes(2), ts.Token);
+            }
+            catch (TaskCanceledException) { /* soak the kill switch */ }
+
+            ((QueueAdapter<TestMessage>)msn.QueueAdapters[typeof(TestMessage)]).Messages.Should().BeEmpty();
+            ((QueueAdapter<TestMessage>)msn.QueueAdapters[typeof(TestMessage)]).LockTimers.Should().BeEmpty();
+        }
+    }
+
+    [Fact, IsIntegration]
+    public async Task Test_LockComplete_MessageFlow()
+    {
+        await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
+
+        using (var ts = new CancellationTokenSource())
+        using (var msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
+        {
+            await msn.Send(new TestMessage());
+
+            msn.Receive<TestMessage>(
+                async m =>
+                {
+                    await msn.Lock(m);
+                    await Task.Delay(TimeSpan.FromSeconds(5), ts.Token);
+                    await msn.Complete(m);
+
+                    ts.Cancel(); // kill switch
+                });
+
+            try
+            {
+                await Task.Delay(TimeSpan.FromMinutes(2), ts.Token);
+            }
+            catch (TaskCanceledException) { /* soak the kill switch */ }
+
+            ((QueueAdapter<TestMessage>)msn.QueueAdapters[typeof(TestMessage)]).Messages.Should().BeEmpty();
+            ((QueueAdapter<TestMessage>)msn.QueueAdapters[typeof(TestMessage)]).LockTimers.Should().BeEmpty();
+        }
+    }
+
+    [Fact, IsIntegration]
+    public async Task Test_LockError_MessageFlow()
+    {
+        await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
+
+        using (var ts = new CancellationTokenSource())
+        using (var msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
+        {
+            var message = new TestMessage();
+            await msn.Send(message);
+
+            msn.Receive<TestMessage>(
+                async m =>
+                {
+                    await msn.Lock(m);
+                    await Task.Delay(TimeSpan.FromSeconds(5), ts.Token);
+                    await msn.Error(m);
+
+                    ts.Cancel(); // kill switch
+                });
+
+            try
+            {
+                await Task.Delay(TimeSpan.FromMinutes(2), ts.Token);
+            }
+            catch (TaskCanceledException) { /* soak the kill switch */ }
+
+            var receiver = new MessageReceiver(ServiceBusFixture.ConfigSettings.ConnectionString, EntityNameHelper.FormatDeadLetterPath(typeof(TestMessage).GetEntityName()), ReceiveMode.ReceiveAndDelete);
+            var rMessage = (await receiver.ReadBatchAsync<TestMessage>(1)).FirstOrDefault();
+
+            rMessage.Should().NotBeNull();
+            rMessage.Should().BeEquivalentTo(message);
+
+            ((QueueAdapter<TestMessage>)msn.QueueAdapters[typeof(TestMessage)]).Messages.Should().BeEmpty();
+            ((QueueAdapter<TestMessage>)msn.QueueAdapters[typeof(TestMessage)]).LockTimers.Should().BeEmpty();
         }
     }
 }

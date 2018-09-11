@@ -81,7 +81,7 @@
         {
             lock (Gate)
             {
-                GetQueueAdapterIfExists<T>().StopReading().Wait();
+                GetQueueAdapterIfExists<T>().StopReading();
 
                 MessageSubs[typeof(T)].Dispose();
                 MessageSubs.Remove(typeof(T));

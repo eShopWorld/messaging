@@ -135,14 +135,8 @@
         /// <summary>
         /// Stops pooling the queue for reading messages.
         /// </summary>
-        internal async Task StopReading()
+        internal void StopReading()
         {
-            if (Receiver != null)
-            {
-                await Receiver.CloseAsync().ConfigureAwait(false);
-                Receiver = null;
-            }
-
             ReadTimer.Dispose();
             ReadTimer = null;
         }

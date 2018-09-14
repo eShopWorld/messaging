@@ -210,4 +210,10 @@ I suggest you reduce the size of the namespace: '{messageType.Namespace}'.");
         /// <inheritdoc />
         public abstract void Dispose();
     }
+
+    internal enum MessagingTransportEnum
+    {
+        Queue,
+        Topic
+    }
 }

@@ -29,7 +29,7 @@ public class MessengerTest
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
 
-        using (IMessenger msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
+        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
         {
             await msn.Send(new TestMessage());
             ServiceBusFixture.ServiceBusNamespace.AssertSingleQueueExists(typeof(TestMessage));
@@ -41,7 +41,7 @@ public class MessengerTest
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
 
-        using (IMessenger msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
+        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
         {
             msn.Receive<TestMessage>(__ => { });
             ServiceBusFixture.ServiceBusNamespace.AssertSingleQueueExists(typeof(TestMessage));
@@ -58,7 +58,7 @@ public class MessengerTest
         var messages = new List<TestMessage>();
         for (var i = 0; i < sendCount; i++) { messages.Add(new TestMessage()); }
 
-        using (IMessenger msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
+        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
         {
             foreach (var message in messages)
             {
@@ -85,7 +85,7 @@ public class MessengerTest
         for (var i = 0; i < receiveCount; i++) { messages.Add(new TestMessage()); }
 
         using (var ts = new CancellationTokenSource())
-        using (IMessenger msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
+        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
         {
             // We need to create the messenger before sending the messages to avoid writing unecessary code to create the queue
             // during the test. Receive will create the queue automatically. This breaks the AAA pattern by design.
@@ -115,7 +115,7 @@ public class MessengerTest
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
 
-        using (IMessenger msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
+        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
         {
             await msn.Send(new TestMessage());
 
@@ -161,8 +161,8 @@ public class MessengerTest
             }
             catch (TaskCanceledException) { /* soak the kill switch */ }
 
-            ((QueueAdapter<TestMessage>)msn.QueueAdapters[typeof(TestMessage)]).Messages.Should().BeEmpty();
-            ((QueueAdapter<TestMessage>)msn.QueueAdapters[typeof(TestMessage)]).LockTimers.Should().BeEmpty();
+            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage)]).Messages.Should().BeEmpty();
+            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage)]).LockTimers.Should().BeEmpty();
         }
     }
 
@@ -192,8 +192,8 @@ public class MessengerTest
             }
             catch (TaskCanceledException) { /* soak the kill switch */ }
 
-            ((QueueAdapter<TestMessage>)msn.QueueAdapters[typeof(TestMessage)]).Messages.Should().BeEmpty();
-            ((QueueAdapter<TestMessage>)msn.QueueAdapters[typeof(TestMessage)]).LockTimers.Should().BeEmpty();
+            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage)]).Messages.Should().BeEmpty();
+            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage)]).LockTimers.Should().BeEmpty();
         }
     }
 
@@ -230,8 +230,8 @@ public class MessengerTest
             rMessage.Should().NotBeNull();
             rMessage.Should().BeEquivalentTo(message);
 
-            ((QueueAdapter<TestMessage>)msn.QueueAdapters[typeof(TestMessage)]).Messages.Should().BeEmpty();
-            ((QueueAdapter<TestMessage>)msn.QueueAdapters[typeof(TestMessage)]).LockTimers.Should().BeEmpty();
+            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage)]).Messages.Should().BeEmpty();
+            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage)]).LockTimers.Should().BeEmpty();
         }
     }
 }

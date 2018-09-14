@@ -43,5 +43,19 @@
             queues.Count.Should().Be(1);
             queues.SingleOrDefault(q => string.Equals(q.Name, type.GetEntityName(), StringComparison.CurrentCultureIgnoreCase)).Should().NotBeNull();
         }
+
+        /// <summary>
+        /// Checks if a given topic exists to facilitate tests that scorch the namespace and check if the topic was properly created.
+        /// </summary>
+        /// <param name="sbNamespace">The <see cref="IServiceBusNamespace"/> that we are checking in.</param>
+        /// <param name="type">The event <see cref="Type"/> that we are checking the topic for.</param>
+        public static void AssertSingleTopicExists(this IServiceBusNamespace sbNamespace, Type type)
+        {
+            sbNamespace.Refresh();
+            var queues = sbNamespace.Topics.List().ToList();
+
+            queues.Count.Should().Be(1);
+            queues.SingleOrDefault(q => string.Equals(q.Name, type.GetEntityName(), StringComparison.CurrentCultureIgnoreCase)).Should().NotBeNull();
+        }
     }
 }

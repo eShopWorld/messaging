@@ -154,7 +154,7 @@
         /// <inheritdoc />
         public override void Dispose()
         {
-            Receiver.CloseAsync().Wait();
+            Receiver?.CloseAsync().Wait();
             ReadTimer?.Dispose();
         }
     }

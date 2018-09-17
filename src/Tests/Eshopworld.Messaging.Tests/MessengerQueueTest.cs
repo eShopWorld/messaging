@@ -43,7 +43,7 @@ public class MessengerQueueTest
 
         using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
         {
-            msn.Receive<TestMessage>(__ => { });
+            msn.Receive<TestMessage>(_ => { });
             ServiceBusFixture.ServiceBusNamespace.AssertSingleQueueExists(typeof(TestMessage));
         }
     }

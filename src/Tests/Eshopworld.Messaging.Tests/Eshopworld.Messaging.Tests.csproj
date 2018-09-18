@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="eshopworld.core" Version="1.1.1" />
+    <PackageReference Include="eshopworld.core" Version="2.0.0" />
     <PackageReference Include="eshopworld.tests.core" Version="1.0.4" />
     <PackageReference Include="Microsoft.Azure.KeyVault" Version="3.0.0" />
     <PackageReference Include="microsoft.azure.management.fluent" Version="1.15.1" />

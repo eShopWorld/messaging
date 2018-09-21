@@ -3,8 +3,10 @@
   <PropertyGroup>
     <TargetFramework>netcoreapp2.1</TargetFramework>
     <DebugType>Full</DebugType>
-    
+
     <IsPackable>false</IsPackable>
+    <LangVersion>latest</LangVersion>
+    <SonarQubeTestProject>true</SonarQubeTestProject>
   </PropertyGroup>
 
   <ItemGroup>

@@ -21,7 +21,7 @@
     using Microsoft.Rest;
     using Newtonsoft.Json;
 
-    internal abstract class ServiceBusAdapter<T> : ServiceBusAdapter, IDisposable
+    internal abstract class ServiceBusAdapter<T> : ServiceBusAdapter
         where T : class
     {
         internal readonly IDictionary<T, Message> Messages = new Dictionary<T, Message>(ObjectReferenceEqualityComparer<T>.Default);
@@ -152,14 +152,7 @@
             Receiver.PrefetchCount = batchSize;
         }
 
-        /// <inheritdoc />
-        public override void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
+        protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
@@ -174,6 +167,7 @@
     /// </summary>
     internal abstract class ServiceBusAdapter : IDisposable
     {
+        [SuppressMessage("Critical Code Smell", "S2223:Non-constant static fields should not be visible", Justification = "Performance")]
         protected static IServiceBusNamespace AzureServiceBusNamespace;
         internal readonly object Gate = new object();
 
@@ -184,7 +178,7 @@
         /// <param name="connectionString">The Azure Service Bus connection string.</param>
         /// <param name="subscriptionId">The ID of the subscription where the service bus namespace lives.</param>
         /// <param name="messageType">The fully strongly typed <see cref="Type"/> of the message we want to create the queue for.</param>
-        [SuppressMessage("Maintainability", "S1541:Static fields should not be updated in constructors", Justification = "Performance")]
+        [SuppressMessage("Major Code Smell", "S3010:Static fields should not be updated in constructors", Justification = "Performance")]
         protected ServiceBusAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]Type messageType)
         {
             if (messageType.FullName?.Length > 260) // SB quota: Entity path max length
@@ -219,7 +213,14 @@ I suggest you reduce the size of the namespace: '{messageType.Namespace}'.");
             }
         }
 
-        public abstract void Dispose();
+        /// <inheritdoc />
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected abstract void Dispose(bool disposing);
     }
 
     internal enum MessagingTransport

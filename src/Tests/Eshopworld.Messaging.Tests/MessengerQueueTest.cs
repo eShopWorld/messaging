@@ -87,13 +87,14 @@ public class MessengerQueueTest
         using (var ts = new CancellationTokenSource())
         using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
         {
-            // We need to create the messenger before sending the messages to avoid writing unecessary code to create the queue
+            // We need to create the messenger before sending the messages to avoid writing non necessary code to create the queue
             // during the test. Receive will create the queue automatically. This breaks the AAA pattern by design.
             // This test flow also ensures that receive will actually create the queue properly.
             msn.Receive<TestMessage>(
                 m =>
                 {
                     rMessages.Add(m);
+                    msn.Complete(m);
                     if (rMessages.Count == messages.Count) ts.Cancel(); // kill switch
                 });
 
@@ -102,7 +103,7 @@ public class MessengerQueueTest
 
             try
             {
-                await Task.Delay(TimeSpan.FromMinutes(2), ts.Token);
+                await Task.Delay(TimeSpan.FromMinutes(5), ts.Token);
             }
             catch (TaskCanceledException) { /* soak the kill switch */ }
 

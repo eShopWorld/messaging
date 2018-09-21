@@ -80,12 +80,14 @@
             await Sender.SendAsync(qMessage).ConfigureAwait(false);
         }
 
-        /// <inheritdoc />
-        public override void Dispose()
+        protected override void Dispose(bool disposing)
         {
-            Sender.CloseAsync().Wait();
+            if (disposing)
+            {
+                Sender.CloseAsync().Wait();
+            }
 
-            base.Dispose();
+            base.Dispose(disposing);
         }
     }
 }

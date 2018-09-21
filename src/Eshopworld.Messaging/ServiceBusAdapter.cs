@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics.CodeAnalysis;
     using System.Linq;
     using System.Text;
     using System.Text.RegularExpressions;
@@ -20,7 +21,7 @@
     using Microsoft.Rest;
     using Newtonsoft.Json;
 
-    internal abstract class ServiceBusAdapter<T> : ServiceBusAdapter
+    internal abstract class ServiceBusAdapter<T> : ServiceBusAdapter, IDisposable
         where T : class
     {
         internal readonly IDictionary<T, Message> Messages = new Dictionary<T, Message>(ObjectReferenceEqualityComparer<T>.Default);
@@ -36,7 +37,7 @@
         internal long LockInSeconds;
         internal long LockTickInSeconds;
 
-        internal ServiceBusAdapter([NotNull] string connectionString, [NotNull] string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize)
+        protected ServiceBusAdapter([NotNull] string connectionString, [NotNull] string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize)
             : base(connectionString, subscriptionId, typeof(T))
         {
             MessagesIn = messagesIn;
@@ -154,8 +155,17 @@
         /// <inheritdoc />
         public override void Dispose()
         {
-            Receiver?.CloseAsync().Wait();
-            ReadTimer?.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                Receiver?.CloseAsync().Wait();
+                ReadTimer?.Dispose();
+            }
         }
     }
 
@@ -164,8 +174,9 @@
     /// </summary>
     internal abstract class ServiceBusAdapter : IDisposable
     {
-        internal static IServiceBusNamespace AzureServiceBusNamespace;
+        protected static IServiceBusNamespace AzureServiceBusNamespace;
         internal readonly object Gate = new object();
+
 
         /// <summary>
         /// Initializes a new instance of <see cref="ServiceBusAdapter"/>.
@@ -173,7 +184,8 @@
         /// <param name="connectionString">The Azure Service Bus connection string.</param>
         /// <param name="subscriptionId">The ID of the subscription where the service bus namespace lives.</param>
         /// <param name="messageType">The fully strongly typed <see cref="Type"/> of the message we want to create the queue for.</param>
-        internal ServiceBusAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]Type messageType)
+        [SuppressMessage("Maintainability", "S1541:Static fields should not be updated in constructors", Justification = "Performance")]
+        protected ServiceBusAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]Type messageType)
         {
             if (messageType.FullName?.Length > 260) // SB quota: Entity path max length
             {
@@ -207,11 +219,10 @@ I suggest you reduce the size of the namespace: '{messageType.Namespace}'.");
             }
         }
 
-        /// <inheritdoc />
         public abstract void Dispose();
     }
 
-    internal enum MessagingTransportEnum
+    internal enum MessagingTransport
     {
         Queue,
         Topic

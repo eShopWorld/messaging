@@ -68,13 +68,17 @@
             await Sender.SendAsync(qMessage).ConfigureAwait(false);
         }
 
-        /// <inheritdoc />
-        public override void Dispose()
+        protected override void Dispose(bool disposing)
         {
-            Receiver.CloseAsync().Wait();
-            Sender.CloseAsync().Wait();
+            if (disposing)
+            {
+                Receiver.CloseAsync().Wait();
+                Sender.CloseAsync().Wait();
 
-            ReadTimer?.Dispose();
+                ReadTimer?.Dispose();
+            }
+
+            base.Dispose(disposing);
         }
     }
 }

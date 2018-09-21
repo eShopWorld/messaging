@@ -51,7 +51,7 @@
         {
             if (!ServiceBusAdapters.ContainsKey(typeof(T)))
             {
-                SetupMessageType<T>(10, MessagingTransportEnum.Queue);
+                SetupMessageType<T>(10, MessagingTransport.Queue);
             }
 
             await ((QueueAdapter<T>)ServiceBusAdapters[typeof(T)]).Send(message).ConfigureAwait(false);
@@ -63,7 +63,7 @@
         {
             if (!ServiceBusAdapters.ContainsKey(typeof(T)))
             {
-                SetupMessageType<T>(10, MessagingTransportEnum.Topic);
+                SetupMessageType<T>(10, MessagingTransport.Topic);
             }
 
             await ((TopicAdapter<T>)ServiceBusAdapters[typeof(T)]).Send(@event).ConfigureAwait(false);
@@ -78,7 +78,7 @@
                 throw new InvalidOperationException("You already added a callback to this message type. Only one callback per type is supported.");
             }
 
-            ((QueueAdapter<T>) SetupMessageType<T>(batchSize, MessagingTransportEnum.Queue)).StartReading();
+            ((QueueAdapter<T>) SetupMessageType<T>(batchSize, MessagingTransport.Queue)).StartReading();
             MessageSubs.Add(typeof(T), MessagesIn.OfType<T>().Subscribe(callback));
         }
 
@@ -91,7 +91,7 @@
                 throw new InvalidOperationException("You already added a callback to this message type. Only one callback per type is supported.");
             }
 
-            await ((TopicAdapter<T>) SetupMessageType<T>(batchSize, MessagingTransportEnum.Topic)).StartReading(subscriptionName);
+            await ((TopicAdapter<T>) SetupMessageType<T>(batchSize, MessagingTransport.Topic)).StartReading(subscriptionName);
             MessageSubs.Add(typeof(T), MessagesIn.OfType<T>().Subscribe(callback));
         }
 
@@ -114,14 +114,14 @@
         /// <inheritdoc />
         public IObservable<T> GetMessageObservable<T>(int batchSize = 10) where T : class // GetMessageObservable || GetEventObservable
         {
-            ((QueueAdapter<T>)SetupMessageType<T>(batchSize, MessagingTransportEnum.Queue)).StartReading();
+            ((QueueAdapter<T>)SetupMessageType<T>(batchSize, MessagingTransport.Queue)).StartReading();
             return MessagesIn.OfType<T>().AsObservable();
         }
 
         /// <inheritdoc />
         public async Task<IObservable<T>> GetEventObservable<T>(string subscriptionName, int batchSize = 10) where T : class
         {
-            await ((TopicAdapter<T>)SetupMessageType<T>(batchSize, MessagingTransportEnum.Topic)).StartReading(subscriptionName);
+            await ((TopicAdapter<T>)SetupMessageType<T>(batchSize, MessagingTransport.Topic)).StartReading(subscriptionName);
             return MessagesIn.OfType<T>().AsObservable();
         }
 
@@ -148,7 +148,7 @@
         /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the <see cref="MessageReceiver"/>.</param>
         /// <param name="transport">The type of the transport to setup</param>
         /// <returns>The message queue adapter.</returns>
-        internal ServiceBusAdapter<T> SetupMessageType<T>(int batchSize, MessagingTransportEnum transport) where T : class
+        internal ServiceBusAdapter<T> SetupMessageType<T>(int batchSize, MessagingTransport transport) where T : class
         {
             ServiceBusAdapter adapter = null;
             lock (Gate)
@@ -157,14 +157,14 @@
                 {
                     switch (transport)
                     {
-                        case MessagingTransportEnum.Queue:
+                        case MessagingTransport.Queue:
                             adapter = new QueueAdapter<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver(), batchSize);
                             break;
-                        case MessagingTransportEnum.Topic:
+                        case MessagingTransport.Topic:
                             adapter = new TopicAdapter<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver(), batchSize);
                             break;
                         default:
-                            throw new InvalidOperationException($"The {nameof(MessagingTransportEnum)} was extended and the use case on the {nameof(SetupMessageType)} switch wasn't.");
+                            throw new InvalidOperationException($"The {nameof(MessagingTransport)} was extended and the use case on the {nameof(SetupMessageType)} switch wasn't.");
                     }
 
                     ServiceBusAdapters.Add(typeof(T), adapter);
@@ -177,11 +177,20 @@
         /// <inheritdoc />
         public void Dispose()
         {
-            MessageSubs.Release();
-            MessageSubs = null;
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
 
-            ServiceBusAdapters.Release();
-            ServiceBusAdapters = null;
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                MessageSubs.Release();
+                MessageSubs = null;
+
+                ServiceBusAdapters.Release();
+                ServiceBusAdapters = null;
+            }
         }
     }
 }

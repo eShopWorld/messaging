@@ -4,7 +4,7 @@
     using JetBrains.Annotations;
     using Microsoft.Azure.ServiceBus.Core;
     using System;
-    using System.Collections.Generic;
+    using System.Collections.Concurrent;
     using System.Reactive;
     using System.Reactive.Linq;
     using System.Reactive.Subjects;
@@ -26,8 +26,8 @@
 
         internal readonly ISubject<object> MessagesIn = new Subject<object>();
 
-        internal Dictionary<Type, IDisposable> MessageSubs = new Dictionary<Type, IDisposable>();
-        internal Dictionary<Type, ServiceBusAdapter> ServiceBusAdapters = new Dictionary<Type, ServiceBusAdapter>();
+        internal ConcurrentDictionary<Type, IDisposable> MessageSubs = new ConcurrentDictionary<Type, IDisposable>();
+        internal ConcurrentDictionary<Type, ServiceBusAdapter> ServiceBusAdapters = new ConcurrentDictionary<Type, ServiceBusAdapter>();
 
         internal ServiceBusAdapter<T> GetQueueAdapterIfExists<T>() where T : class =>
             ServiceBusAdapters.TryGetValue(typeof(T), out var result)
@@ -73,26 +73,24 @@
         public void Receive<T>(Action<T> callback, int batchSize = 10)
             where T : class
         {
-            if (MessageSubs.ContainsKey(typeof(T)))
+            if (!MessageSubs.TryAdd(typeof(T), MessagesIn.OfType<T>().Subscribe(callback)))
             {
                 throw new InvalidOperationException("You already added a callback to this message type. Only one callback per type is supported.");
             }
 
-            ((QueueAdapter<T>) SetupMessageType<T>(batchSize, MessagingTransport.Queue)).StartReading();
-            MessageSubs.Add(typeof(T), MessagesIn.OfType<T>().Subscribe(callback));
+            ((QueueAdapter<T>)SetupMessageType<T>(batchSize, MessagingTransport.Queue)).StartReading();
         }
 
         /// <inheritdoc />
         public async Task Subscribe<T>(Action<T> callback, string subscriptionName, int batchSize = 10)
             where T : class
         {
-            if (MessageSubs.ContainsKey(typeof(T)))
+            if (!MessageSubs.TryAdd(typeof(T), MessagesIn.OfType<T>().Subscribe(callback)))
             {
                 throw new InvalidOperationException("You already added a callback to this message type. Only one callback per type is supported.");
             }
 
-            await ((TopicAdapter<T>) SetupMessageType<T>(batchSize, MessagingTransport.Topic)).StartReading(subscriptionName);
-            MessageSubs.Add(typeof(T), MessagesIn.OfType<T>().Subscribe(callback));
+            await ((TopicAdapter<T>)SetupMessageType<T>(batchSize, MessagingTransport.Topic)).StartReading(subscriptionName);
         }
 
         /// <inheritdoc />
@@ -106,7 +104,7 @@
                 if (MessageSubs.ContainsKey(typeof(T))) // if reactive messenger is used, the subscriptions are handled by the package client
                 {
                     MessageSubs[typeof(T)].Dispose();
-                    MessageSubs.Remove(typeof(T));
+                    MessageSubs.TryRemove(typeof(T), out _);
                 }
             }
         }
@@ -151,23 +149,24 @@
         internal ServiceBusAdapter<T> SetupMessageType<T>(int batchSize, MessagingTransport transport) where T : class
         {
             ServiceBusAdapter adapter = null;
-            lock (Gate)
-            {
-                if (!ServiceBusAdapters.ContainsKey(typeof(T)))
-                {
-                    switch (transport)
-                    {
-                        case MessagingTransport.Queue:
-                            adapter = new QueueAdapter<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver(), batchSize);
-                            break;
-                        case MessagingTransport.Topic:
-                            adapter = new TopicAdapter<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver(), batchSize);
-                            break;
-                        default:
-                            throw new InvalidOperationException($"The {nameof(MessagingTransport)} was extended and the use case on the {nameof(SetupMessageType)} switch wasn't.");
-                    }
 
-                    ServiceBusAdapters.Add(typeof(T), adapter);
+            if (!ServiceBusAdapters.ContainsKey(typeof(T)))
+            {
+                switch (transport)
+                {
+                    case MessagingTransport.Queue:
+                        adapter = new QueueAdapter<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver(), batchSize);
+                        break;
+                    case MessagingTransport.Topic:
+                        adapter = new TopicAdapter<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver(), batchSize);
+                        break;
+                    default:
+                        throw new InvalidOperationException($"The {nameof(MessagingTransport)} was extended and the use case on the {nameof(SetupMessageType)} switch wasn't.");
+                }
+
+                if (!ServiceBusAdapters.TryAdd(typeof(T), adapter))
+                {
+                    adapter.Dispose();
                 }
             }
 

@@ -30,13 +30,47 @@
             }
         }
 
+        /// <summary>
+        /// Checks if a given queue exists to facilitate tests that scorch the namespace and check if the queue was properly created.
+        /// </summary>
+        /// <param name="sbNamespace">The <see cref="IServiceBusNamespace"/> that we are checking in.</param>
+        /// <param name="type">The message <see cref="Type"/> that we are checking the queue for.</param>
         public static void AssertSingleQueueExists(this IServiceBusNamespace sbNamespace, Type type)
         {
             sbNamespace.Refresh();
             var queues = sbNamespace.Queues.List().ToList();
 
             queues.Count.Should().Be(1);
-            queues.SingleOrDefault(q => string.Equals(q.Name, type.GetQueueName(), StringComparison.CurrentCultureIgnoreCase)).Should().NotBeNull();
+            queues.SingleOrDefault(q => string.Equals(q.Name, type.GetEntityName(), StringComparison.CurrentCultureIgnoreCase)).Should().NotBeNull();
+        }
+
+        /// <summary>
+        /// Checks if a given topic exists to facilitate tests that scorch the namespace and check if the topic was properly created.
+        /// </summary>
+        /// <param name="sbNamespace">The <see cref="IServiceBusNamespace"/> that we are checking in.</param>
+        /// <param name="type">The event <see cref="Type"/> that we are checking the topic for.</param>
+        public static void AssertSingleTopicExists(this IServiceBusNamespace sbNamespace, Type type)
+        {
+            sbNamespace.Refresh();
+            var topics = sbNamespace.Topics.List().ToList();
+
+            topics.Count.Should().Be(1);
+            topics.SingleOrDefault(s => string.Equals(s.Name, type.GetEntityName(), StringComparison.CurrentCultureIgnoreCase)).Should().NotBeNull();
+        }
+
+        /// <summary>
+        /// Checks if a given topic exists to facilitate tests that scorch the namespace and check if the topic was properly created.
+        /// </summary>
+        /// <param name="sbNamespace">The <see cref="IServiceBusNamespace"/> that we are checking in.</param>
+        /// <param name="type">The event <see cref="Type"/> that we are checking the topic for.</param>
+        /// <param name="subscriptionName">The name of the subscription that we are checking on the topic.</param>
+        public static void AssertSingleTopicSubscriptionExists(this IServiceBusNamespace sbNamespace, Type type, string subscriptionName)
+        {
+            sbNamespace.Refresh();
+            var subscriptions = sbNamespace.Topics.GetByName(type.GetEntityName()).Subscriptions.List().ToList();
+
+            subscriptions.Count.Should().Be(1);
+            subscriptions.SingleOrDefault(t => string.Equals(t.Name, subscriptionName, StringComparison.CurrentCultureIgnoreCase)).Should().NotBeNull();
         }
     }
 }

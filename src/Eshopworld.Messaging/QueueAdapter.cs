@@ -28,7 +28,7 @@
         /// <param name="messagesIn">The <see cref="IObserver{IMessage}"/> used to push received messages into the pipeline.</param>
         /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
         public QueueAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize)
-            : base(connectionString, subscriptionId, messagesIn, batchSize)
+            : base(connectionString, subscriptionId, messagesIn, batchSize, typeOverride: null)
         {
             AzureQueue = AzureServiceBusNamespace.CreateQueueIfNotExists(typeof(T).GetEntityName()).Result;
 

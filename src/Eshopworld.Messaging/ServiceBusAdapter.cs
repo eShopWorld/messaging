@@ -37,8 +37,8 @@
         internal long LockInSeconds;
         internal long LockTickInSeconds;
 
-        protected ServiceBusAdapter([NotNull] string connectionString, [NotNull] string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize)
-            : base(connectionString, subscriptionId, typeof(T))
+        protected ServiceBusAdapter([NotNull] string connectionString, [NotNull] string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize, Type typeOverride)
+            : base(connectionString, subscriptionId, typeOverride ?? typeof(T))
         {
             MessagesIn = messagesIn;
             BatchSize = batchSize;
@@ -55,7 +55,10 @@
         {
             lock (Gate)
             {
-                Messages.Remove(message);
+                if (typeof(T) != typeof(string))
+                {
+                    Messages.Remove(message);
+                }
 
                 // check for a lock renewal timer and release it if it exists
                 if (LockTimers.ContainsKey(message))
@@ -126,10 +129,17 @@
 
             foreach (var message in messages)
             {
-                var messageBody = JsonConvert.DeserializeObject<T>(Encoding.UTF8.GetString(message.Body));
-
-                Messages[messageBody] = message;
-                MessagesIn.OnNext(messageBody);
+                var messageBodyString = Encoding.UTF8.GetString(message.Body);
+                if (typeof(T) == typeof(string))
+                {
+                    var messageBody = JsonConvert.DeserializeObject<T>(messageBodyString);
+                    Messages[messageBody] = message;
+                    MessagesIn.OnNext(messageBody);
+                }
+                else
+                {
+                    MessagesIn.OnNext(messageBodyString as T);
+                }
             }
         }
 

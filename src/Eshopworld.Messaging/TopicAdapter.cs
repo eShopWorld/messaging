@@ -28,9 +28,16 @@
         /// <param name="subscriptionId">The ID of the subscription where the service bus namespace lives.</param>
         /// <param name="messagesIn">The <see cref="IObserver{IMessage}"/> used to push received messages into the pipeline.</param>
         /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
-        public TopicAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize)
-            : base(connectionString, subscriptionId, messagesIn, batchSize)
+        /// <param name="typeOverride">The type override when we're creating a topic adapter for <see cref="string"/> types.</param>
+        public TopicAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize, Type typeOverride = null)
+            : base(connectionString, subscriptionId, messagesIn, batchSize, typeOverride)
         {
+            if (typeof(T) == typeof(string) && typeOverride == null)
+                throw new InvalidOperationException("You can't create a TopicAdapter of type string without specifying a typeOverride");
+
+            if(typeof(T) != typeof(string) && typeOverride != null)
+                throw new InvalidOperationException($"typeOverride is only respected if you're creating a TopicAdapter where T:string, and this one is for {typeof(T).FullName}");
+
             AzureTopic = AzureServiceBusNamespace.CreateTopicIfNotExists(typeof(T).GetEntityName()).Result;
             Sender = new TopicClient(connectionString, AzureTopic.Name, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
         }

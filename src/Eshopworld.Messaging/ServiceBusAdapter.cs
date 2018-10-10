@@ -1,13 +1,5 @@
 ﻿namespace Eshopworld.Messaging
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Diagnostics.CodeAnalysis;
-    using System.Linq;
-    using System.Text;
-    using System.Text.RegularExpressions;
-    using System.Threading;
-    using System.Threading.Tasks;
     using Core;
     using JetBrains.Annotations;
     using Microsoft.Azure.Management.Fluent;
@@ -20,6 +12,14 @@
     using Microsoft.Azure.Services.AppAuthentication;
     using Microsoft.Rest;
     using Newtonsoft.Json;
+    using System;
+    using System.Collections.Generic;
+    using System.Diagnostics.CodeAnalysis;
+    using System.Linq;
+    using System.Text;
+    using System.Text.RegularExpressions;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     internal abstract class ServiceBusAdapter<T> : ServiceBusAdapter
         where T : class
@@ -27,6 +27,7 @@
         internal readonly IDictionary<T, Message> Messages = new Dictionary<T, Message>(ObjectReferenceEqualityComparer<T>.Default);
         internal readonly IDictionary<T, Timer> LockTimers = new Dictionary<T, Timer>(ObjectReferenceEqualityComparer<T>.Default);
         internal readonly IObserver<T> MessagesIn;
+        internal readonly bool RawMessages;
 
         internal MessageReceiver Receiver;
         internal Timer ReadTimer;
@@ -43,6 +44,8 @@
             MessagesIn = messagesIn;
             BatchSize = batchSize;
             ConnectionString = connectionString;
+
+            RawMessages = typeof(T) == typeof(Message);
         }
 
         /// <summary>
@@ -55,7 +58,7 @@
         {
             lock (Gate)
             {
-                if (typeof(T) != typeof(string))
+                if (!RawMessages)
                 {
                     Messages.Remove(message);
                 }
@@ -75,7 +78,9 @@
         /// <param name="message">The message we want to complete.</param>
         internal async Task Complete(T message)
         {
-            await Receiver.CompleteAsync(Messages[message].SystemProperties.LockToken).ConfigureAwait(false);
+            var m = RawMessages ? message as Message : Messages[message];
+
+            await Receiver.CompleteAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
             Release(message);
         }
 
@@ -85,7 +90,9 @@
         /// <param name="message">The message we want to abandon.</param>
         internal async Task Abandon(T message)
         {
-            await Receiver.AbandonAsync(Messages[message].SystemProperties.LockToken).ConfigureAwait(false);
+            var m = RawMessages ? message as Message : Messages[message];
+
+            await Receiver.AbandonAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
             Release(message);
         }
 
@@ -95,7 +102,9 @@
         /// <param name="message">The message that we want to move to the error queue.</param>
         internal async Task Error(T message)
         {
-            await Receiver.DeadLetterAsync(Messages[message].SystemProperties.LockToken).ConfigureAwait(false);
+            var m = RawMessages ? message as Message : Messages[message];
+
+            await Receiver.DeadLetterAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
             Release(message);
         }
 
@@ -107,7 +116,9 @@
         /// <param name="message">The message that we want to create the lock on.</param>
         internal async Task Lock(T message)
         {
-            await Receiver.RenewLockAsync(Messages[message]).ConfigureAwait(false);
+            var m = RawMessages ? message as Message : Messages[message];
+
+            await Receiver.RenewLockAsync(m).ConfigureAwait(false);
 
             LockTimers.Add(
                 message,
@@ -124,21 +135,22 @@
         /// <param name="_">[Ignored]</param>
         internal async Task Read([CanBeNull]object _)
         {
+            if (Receiver.IsClosedOrClosing) return;
+
             var messages = await Receiver.ReceiveAsync(BatchSize).ConfigureAwait(false);
             if (messages == null) return;
 
             foreach (var message in messages)
             {
-                var messageBodyString = Encoding.UTF8.GetString(message.Body);
-                if (typeof(T) == typeof(string))
+                if (RawMessages)
                 {
-                    var messageBody = JsonConvert.DeserializeObject<T>(messageBodyString);
-                    Messages[messageBody] = message;
-                    MessagesIn.OnNext(messageBody);
+                    MessagesIn.OnNext(message as T);
                 }
                 else
                 {
-                    MessagesIn.OnNext(messageBodyString as T);
+                    var messageBody = JsonConvert.DeserializeObject<T>(Encoding.UTF8.GetString(message.Body));
+                    Messages[messageBody] = message;
+                    MessagesIn.OnNext(messageBody);
                 }
             }
         }
@@ -166,8 +178,8 @@
         {
             if (disposing)
             {
-                Receiver?.CloseAsync().Wait();
                 ReadTimer?.Dispose();
+                Receiver?.CloseAsync().Wait();
             }
         }
     }

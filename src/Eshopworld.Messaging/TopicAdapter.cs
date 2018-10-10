@@ -32,13 +32,14 @@
         public TopicAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize, Type typeOverride = null)
             : base(connectionString, subscriptionId, messagesIn, batchSize, typeOverride)
         {
-            if (typeof(T) == typeof(string) && typeOverride == null)
-                throw new InvalidOperationException("You can't create a TopicAdapter of type string without specifying a typeOverride");
+            if (typeof(T) == typeof(Message) && typeOverride == null)
+                throw new InvalidOperationException($"You can't create a TopicAdapter of type {typeof(Message).FullName} without specifying a typeOverride");
 
-            if(typeof(T) != typeof(string) && typeOverride != null)
-                throw new InvalidOperationException($"typeOverride is only respected if you're creating a TopicAdapter where T:string, and this one is for {typeof(T).FullName}");
+            if(typeof(T) != typeof(Message) && typeOverride != null)
+                throw new InvalidOperationException($"typeOverride is only respected if you're creating a TopicAdapter where T:{typeof(Message).FullName}, and this one is for {typeof(T).FullName}");
 
-            AzureTopic = AzureServiceBusNamespace.CreateTopicIfNotExists(typeof(T).GetEntityName()).Result;
+            var topicType = typeOverride ?? typeof(T);
+            AzureTopic = AzureServiceBusNamespace.CreateTopicIfNotExists(topicType.GetEntityName()).Result;
             Sender = new TopicClient(connectionString, AzureTopic.Name, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
         }
 

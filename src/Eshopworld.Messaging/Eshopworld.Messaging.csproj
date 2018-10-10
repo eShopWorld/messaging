@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     
-    <Version>1.0.0</Version>
-    <PackageReleaseNotes>Initial add after package rebranding.</PackageReleaseNotes>
+    <Version>1.0.1</Version>
+    <PackageReleaseNotes>Added an internal optional route to bypass event deserialization during subscribe.</PackageReleaseNotes>
 
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>

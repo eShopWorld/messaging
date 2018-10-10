@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive.Subjects;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Eshopworld.Core;
@@ -10,6 +12,7 @@ using Eshopworld.Tests.Core;
 using FluentAssertions;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.ServiceBus.Core;
+using Newtonsoft.Json;
 using Xunit;
 
 // ReSharper disable once CheckNamespace
@@ -106,6 +109,44 @@ public class MessengerTopicTest
                     msn.Complete(m);
                     if (rMessages.Count == messages.Count) ts.Cancel(); // kill switch
                 }, subscriptionName);
+
+            var sender = new MessageSender(ServiceBusFixture.ConfigSettings.ConnectionString, typeof(TestMessage).GetEntityName());
+            await sender.WriteBatchAsync(messages);
+
+            try
+            {
+                await Task.Delay(TimeSpan.FromMinutes(5), ts.Token);
+            }
+            catch (TaskCanceledException) { /* soak the kill switch */ }
+
+            rMessages.Should().BeEquivalentTo(messages);
+        }
+    }
+
+    [Fact, IsIntegration]
+    public async Task Test_ReceivingRandomStringEvents()
+    {
+        var receiveCount = new Random().Next(1, 10);
+        var subscriptionName = nameof(Test_ReceivingRandomEvents).Replace("_", "");
+
+        await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
+
+        var rMessages = new List<TestMessage>();
+        var messages = new List<TestMessage>();
+        for (var i = 0; i < receiveCount; i++) { messages.Add(new TestMessage()); }
+
+        using (var ts = new CancellationTokenSource())
+        using (var messagesSubject = new Subject<Message>())
+        using (var adapter = new TopicAdapter<Message>(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId, messagesSubject, 10, typeof(TestMessage)))
+        using (messagesSubject.Subscribe(
+            m =>
+            {
+                rMessages.Add(JsonConvert.DeserializeObject<TestMessage>(Encoding.UTF8.GetString(m.Body)));
+                adapter.Complete(m).Wait(ts.Token);
+                if (rMessages.Count == messages.Count) ts.Cancel(); // kill switch
+            }))
+        {
+            await adapter.StartReading(subscriptionName);
 
             var sender = new MessageSender(ServiceBusFixture.ConfigSettings.ConnectionString, typeof(TestMessage).GetEntityName());
             await sender.WriteBatchAsync(messages);

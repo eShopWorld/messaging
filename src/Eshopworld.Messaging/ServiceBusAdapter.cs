@@ -27,6 +27,7 @@
         internal readonly IDictionary<T, Message> Messages = new Dictionary<T, Message>(ObjectReferenceEqualityComparer<T>.Default);
         internal readonly IDictionary<T, Timer> LockTimers = new Dictionary<T, Timer>(ObjectReferenceEqualityComparer<T>.Default);
         internal readonly IObserver<T> MessagesIn;
+        internal readonly bool RawMessages;
 
         internal MessageReceiver Receiver;
         internal Timer ReadTimer;
@@ -37,12 +38,14 @@
         internal long LockInSeconds;
         internal long LockTickInSeconds;
 
-        protected ServiceBusAdapter([NotNull] string connectionString, [NotNull] string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize)
-            : base(connectionString, subscriptionId, typeof(T))
+        protected ServiceBusAdapter([NotNull] string connectionString, [NotNull] string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize, Type typeOverride)
+            : base(connectionString, subscriptionId, typeOverride ?? typeof(T))
         {
             MessagesIn = messagesIn;
             BatchSize = batchSize;
             ConnectionString = connectionString;
+
+            RawMessages = typeof(T) == typeof(Message);
         }
 
         /// <summary>
@@ -55,7 +58,10 @@
         {
             lock (Gate)
             {
-                Messages.Remove(message);
+                if (!RawMessages)
+                {
+                    Messages.Remove(message);
+                }
 
                 // check for a lock renewal timer and release it if it exists
                 if (LockTimers.ContainsKey(message))
@@ -72,7 +78,9 @@
         /// <param name="message">The message we want to complete.</param>
         internal async Task Complete(T message)
         {
-            await Receiver.CompleteAsync(Messages[message].SystemProperties.LockToken).ConfigureAwait(false);
+            var m = RawMessages ? message as Message : Messages[message];
+
+            await Receiver.CompleteAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
             Release(message);
         }
 
@@ -82,7 +90,9 @@
         /// <param name="message">The message we want to abandon.</param>
         internal async Task Abandon(T message)
         {
-            await Receiver.AbandonAsync(Messages[message].SystemProperties.LockToken).ConfigureAwait(false);
+            var m = RawMessages ? message as Message : Messages[message];
+
+            await Receiver.AbandonAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
             Release(message);
         }
 
@@ -92,7 +102,9 @@
         /// <param name="message">The message that we want to move to the error queue.</param>
         internal async Task Error(T message)
         {
-            await Receiver.DeadLetterAsync(Messages[message].SystemProperties.LockToken).ConfigureAwait(false);
+            var m = RawMessages ? message as Message : Messages[message];
+
+            await Receiver.DeadLetterAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
             Release(message);
         }
 
@@ -104,7 +116,9 @@
         /// <param name="message">The message that we want to create the lock on.</param>
         internal async Task Lock(T message)
         {
-            await Receiver.RenewLockAsync(Messages[message]).ConfigureAwait(false);
+            var m = RawMessages ? message as Message : Messages[message];
+
+            await Receiver.RenewLockAsync(m).ConfigureAwait(false);
 
             LockTimers.Add(
                 message,
@@ -121,15 +135,23 @@
         /// <param name="_">[Ignored]</param>
         internal async Task Read([CanBeNull]object _)
         {
+            if (Receiver.IsClosedOrClosing) return;
+
             var messages = await Receiver.ReceiveAsync(BatchSize).ConfigureAwait(false);
             if (messages == null) return;
 
             foreach (var message in messages)
             {
-                var messageBody = JsonConvert.DeserializeObject<T>(Encoding.UTF8.GetString(message.Body));
-
-                Messages[messageBody] = message;
-                MessagesIn.OnNext(messageBody);
+                if (RawMessages)
+                {
+                    MessagesIn.OnNext(message as T);
+                }
+                else
+                {
+                    var messageBody = JsonConvert.DeserializeObject<T>(Encoding.UTF8.GetString(message.Body));
+                    Messages[messageBody] = message;
+                    MessagesIn.OnNext(messageBody);
+                }
             }
         }
 
@@ -156,8 +178,8 @@
         {
             if (disposing)
             {
-                Receiver?.CloseAsync().Wait();
                 ReadTimer?.Dispose();
+                Receiver?.CloseAsync().Wait();
             }
         }
     }

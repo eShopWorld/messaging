@@ -1,5 +1,13 @@
 ﻿namespace Eshopworld.Messaging
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Diagnostics.CodeAnalysis;
+    using System.Linq;
+    using System.Text;
+    using System.Text.RegularExpressions;
+    using System.Threading;
+    using System.Threading.Tasks;
     using Core;
     using JetBrains.Annotations;
     using Microsoft.Azure.Management.Fluent;
@@ -12,14 +20,6 @@
     using Microsoft.Azure.Services.AppAuthentication;
     using Microsoft.Rest;
     using Newtonsoft.Json;
-    using System;
-    using System.Collections.Generic;
-    using System.Diagnostics.CodeAnalysis;
-    using System.Linq;
-    using System.Text;
-    using System.Text.RegularExpressions;
-    using System.Threading;
-    using System.Threading.Tasks;
 
     internal abstract class ServiceBusAdapter<T> : ServiceBusAdapter
         where T : class

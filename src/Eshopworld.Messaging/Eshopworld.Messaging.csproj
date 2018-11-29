@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <PackageReleaseNotes>Added an internal optional route to bypass event deserialization during subscribe.</PackageReleaseNotes>
 
     <TargetFramework>netstandard2.0</TargetFramework>

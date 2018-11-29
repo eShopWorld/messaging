@@ -39,7 +39,7 @@
                 throw new InvalidOperationException($"typeOverride is only respected if you're creating a TopicAdapter where T:{typeof(Message).FullName}, and this one is for {typeof(T).FullName}");
 
             var topicType = typeOverride ?? typeof(T);
-            AzureTopic = AzureServiceBusNamespace.CreateTopicIfNotExists(topicType.Name).Result;
+            AzureTopic = AzureServiceBusNamespace.CreateTopicIfNotExists(topicType.GetEntityName()).Result;
             Sender = new TopicClient(connectionString, AzureTopic.Name, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
         }
 

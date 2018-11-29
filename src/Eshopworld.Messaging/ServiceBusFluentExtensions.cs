@@ -99,7 +99,7 @@
         public static string GetEntityName(this Type type)
         {
 #if DEBUG
-            var queueName = type.FullName;
+            var queueName = type.Name;
             if (Debugger.IsAttached)
             {
                 queueName += $"-{Environment.UserName.Replace("$", "")}";
@@ -107,7 +107,7 @@
 
             return queueName?.ToLower();
 #else
-            return type.FullName?.ToLower();
+            return type.Name?.ToLower();
 #endif
         }
     }

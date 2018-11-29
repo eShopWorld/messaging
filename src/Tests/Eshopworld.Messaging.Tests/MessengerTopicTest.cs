@@ -34,8 +34,8 @@ public class MessengerTopicTest
 
         using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
         {
-            await msn.Publish(new PlatformOrderCreateDomainEvent());
-            ServiceBusFixture.ServiceBusNamespace.AssertSingleTopicExists(typeof(PlatformOrderCreateDomainEvent));
+            await msn.Publish(new ChildTestMessage());
+            ServiceBusFixture.ServiceBusNamespace.AssertSingleTopicExists(typeof(ChildTestMessage));
         }
     }
 

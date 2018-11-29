@@ -28,6 +28,18 @@ public class MessengerTopicTest
     }
 
     [Fact, IsIntegration]
+    public async Task Test_SendCreatesTheTopicAsChildEntityName()
+    {
+        await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
+
+        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
+        {
+            await msn.Publish(new PlatformOrderCreateDomainEvent());
+            ServiceBusFixture.ServiceBusNamespace.AssertSingleTopicExists(typeof(PlatformOrderCreateDomainEvent));
+        }
+    }
+
+    [Fact, IsIntegration]
     public async Task Test_SendCreatesTheTopic()
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();

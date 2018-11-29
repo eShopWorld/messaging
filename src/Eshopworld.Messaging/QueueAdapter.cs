@@ -62,7 +62,7 @@
             var qMessage = new Message(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(message)))
             {
                 ContentType = "application/json",
-                Label = message.GetType().FullName
+                Label = message.GetType().Name
             };
 
             await Sender.SendAsync(qMessage).ConfigureAwait(false);

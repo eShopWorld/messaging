@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     
-    <Version>1.0.1</Version>
-    <PackageReleaseNotes>Added an internal optional route to bypass event deserialization during subscribe.</PackageReleaseNotes>
+    <Version>1.1.0-beta4</Version>
+    <PackageReleaseNotes>Added support for event filters.</PackageReleaseNotes>
 
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>

@@ -59,7 +59,7 @@
         /// <param name="message">The message we want to send.</param>
         internal async Task Send([NotNull]T message)
         {
-            var qMessage = new Message(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(message)))
+            var qMessage = new Message(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(message, MessageJsonSerializerSettings)))
             {
                 ContentType = "application/json",
                 Label = message.GetType().FullName

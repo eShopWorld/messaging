@@ -189,6 +189,12 @@
     /// </summary>
     internal abstract class ServiceBusAdapter : IDisposable
     {
+        protected static readonly JsonSerializerSettings MessageJsonSerializerSettings =
+            new JsonSerializerSettings
+            {
+                ContractResolver = new EventContractResolver(EventFilterTargets.Messaging)
+            };
+
         [SuppressMessage("Critical Code Smell", "S2223:Non-constant static fields should not be visible", Justification = "Performance")]
         protected static IServiceBusNamespace AzureServiceBusNamespace;
         internal readonly object Gate = new object();

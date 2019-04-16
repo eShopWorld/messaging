@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     
-    <Version>1.1.0-beta4</Version>
+    <Version>2.0.0-beta4</Version>
     <PackageReleaseNotes>Added support for event filters.</PackageReleaseNotes>
 
     <TargetFramework>netstandard2.0</TargetFramework>
@@ -26,7 +26,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="eshopworld.core" Version="3.0.0-beta4" />
+    <PackageReference Include="eshopworld.core" Version="3.0.0-beta*" /> <!--Change later once released-->
     <PackageReference Include="jetbrains.annotations" Version="2019.1.1" />
     <PackageReference Include="microsoft.azure.management.fluent" Version="1.21.0" />
     <PackageReference Include="microsoft.azure.servicebus" Version="3.4.0" />

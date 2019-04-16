@@ -26,12 +26,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="eshopworld.core" Version="2.0.0" />
-    <PackageReference Include="jetbrains.annotations" Version="2018.2.1" />
-    <PackageReference Include="microsoft.azure.management.fluent" Version="1.15.1" />
-    <PackageReference Include="microsoft.azure.servicebus" Version="3.1.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.8.0" />
-    <PackageReference Include="system.reactive" Version="4.1.0" />
+    <PackageReference Include="eshopworld.core" Version="3.0.0-beta4" />
+    <PackageReference Include="jetbrains.annotations" Version="2019.1.1" />
+    <PackageReference Include="microsoft.azure.management.fluent" Version="1.21.0" />
+    <PackageReference Include="microsoft.azure.servicebus" Version="3.4.0" />
+    <PackageReference Include="system.reactive" Version="4.1.5" />
   </ItemGroup>
 
 </Project>

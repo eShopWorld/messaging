@@ -7,7 +7,8 @@
 
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
-    <DebugType>Full</DebugType>
+    <DebugType>Portable</DebugType>
+    <IncludeSource>True</IncludeSource>
     
     <IsPackable>True</IsPackable>
     <PackageId>Eshopworld.Messaging</PackageId>
@@ -19,9 +20,6 @@
     <Product>Eshopworld.Messaging</Product>
     <Copyright>Copyright 2018</Copyright>
     <PackageTags>Eshopworld, Messaging, ServiceBus, Azure</PackageTags>
-
-    <IncludeSource>True</IncludeSource>
-    <DebugType>Full</DebugType>
 
   </PropertyGroup>
 

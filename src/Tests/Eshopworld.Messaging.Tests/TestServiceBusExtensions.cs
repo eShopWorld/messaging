@@ -9,7 +9,7 @@
     /// <summary>
     /// Contains extension methods for <see cref="Microsoft.Azure.Management.Fluent"/> around ServiceBus.
     /// </summary>
-    public static class ServiceBusFluentExtensions
+    public static class TestServiceBusExtensions
     {
         /// <summary>
         /// Scorches the entire service bus namespace.

@@ -216,7 +216,7 @@
 I suggest you reduce the size of the namespace: '{messageType.Namespace}'.");
             }
 
-            var namespaceName = Regex.Match(connectionString, @"Endpoint=sb:\/\/([^.]*)", RegexOptions.IgnoreCase).Groups[1].Value;
+            var namespaceName = connectionString.GetNamespaceNameFromConnectionString();
 
             if (AzureServiceBusNamespace == null)
             {

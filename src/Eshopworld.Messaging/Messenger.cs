@@ -191,7 +191,6 @@ namespace Eshopworld.Messaging
         internal ServiceBusAdapter<T> SetupMessageType<T>(int batchSize, MessagingTransport transport) where T : class
         {
             ServiceBusAdapter adapter = null;
-            var messageType = typeof(T);
 
             if (!ServiceBusAdapters.ContainsKey(typeof(T)))
             {

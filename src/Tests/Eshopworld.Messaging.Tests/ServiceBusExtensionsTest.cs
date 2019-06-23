@@ -8,7 +8,7 @@ public class ServiceBusExtensionsTest
 {
     public class GetNamespaceNameFromConnectionString
     {
-        [Fact, IsUnit]
+        [Fact, IsLayer0]
         public void Test_Parse_NormalConnectionString()
         {
             var namespaceName = "my-test-namespace";

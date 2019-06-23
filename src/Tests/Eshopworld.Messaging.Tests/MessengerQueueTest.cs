@@ -24,7 +24,7 @@ public class MessengerQueueTest
         ServiceBusFixture = serviceBusFixture;
     }
 
-    [Fact, IsIntegration]
+    [Fact, IsLayer1]
     public async Task Test_SendCreatesTheQueue()
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
@@ -36,7 +36,7 @@ public class MessengerQueueTest
         }
     }
 
-    [Fact, IsIntegration]
+    [Fact, IsLayer1]
     public async Task Test_ReceiveCreatesTheQueue()
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
@@ -48,7 +48,7 @@ public class MessengerQueueTest
         }
     }
 
-    [Fact, IsIntegration]
+    [Fact, IsLayer1]
     public async Task Test_SendingRandomMessages()
     {
         var sendCount = new Random().Next(1, 10);
@@ -74,7 +74,7 @@ public class MessengerQueueTest
         }
     }
 
-    [Fact, IsIntegration]
+    [Fact, IsLayer1]
     public async Task Test_ReceivingRandomMessages()
     {
         var receiveCount = new Random().Next(1, 10);
@@ -111,7 +111,7 @@ public class MessengerQueueTest
         }
     }
 
-    [Fact, IsIntegration]
+    [Fact, IsLayer1]
     public async Task Test_LockMessage_ForFiveMinutes()
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
@@ -135,7 +135,7 @@ public class MessengerQueueTest
         }
     }
 
-    [Fact, IsIntegration]
+    [Fact, IsLayer1]
     public async Task Test_LockAbandon_MessageFlow()
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
@@ -167,7 +167,7 @@ public class MessengerQueueTest
         }
     }
 
-    [Fact, IsIntegration]
+    [Fact, IsLayer1]
     public async Task Test_LockComplete_MessageFlow()
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
@@ -198,7 +198,7 @@ public class MessengerQueueTest
         }
     }
 
-    [Fact, IsIntegration]
+    [Fact, IsLayer1]
     public async Task Test_LockError_MessageFlow()
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();

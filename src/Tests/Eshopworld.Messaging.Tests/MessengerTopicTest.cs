@@ -24,7 +24,7 @@ public class MessengerTopicTest
         ServiceBusFixture = serviceBusFixture;
     }
 
-    [Fact, IsIntegration]
+    [Fact, IsLayer1]
     public async Task Test_SendCreatesTheTopic()
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
@@ -36,7 +36,7 @@ public class MessengerTopicTest
         }
     }
 
-    [Fact, IsIntegration]
+    [Fact, IsLayer1]
     public async Task Test_ReceiveCreatesTheTopic()
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
@@ -49,7 +49,7 @@ public class MessengerTopicTest
         }
     }
 
-    [Fact, IsIntegration]
+    [Fact, IsLayer1]
     public async Task Test_SendingRandomEvents()
     {
         var sendCount = new Random().Next(1, 10);
@@ -81,7 +81,7 @@ public class MessengerTopicTest
         }
     }
 
-    [Fact, IsIntegration]
+    [Fact, IsLayer1]
     public async Task Test_ReceivingRandomEvents()
     {
         var receiveCount = new Random().Next(1, 10);

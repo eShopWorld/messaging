@@ -1,15 +1,23 @@
-﻿namespace Eshopworld.Messaging
-{
-    using Core;
-    using JetBrains.Annotations;
-    using Microsoft.Azure.ServiceBus.Core;
-    using System;
-    using System.Collections.Concurrent;
-    using System.Reactive;
-    using System.Reactive.Linq;
-    using System.Reactive.Subjects;
-    using System.Threading.Tasks;
+﻿using System;
+using System.Collections.Concurrent;
+using System.Linq;
+using System.Reactive;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
+using System.Threading.Tasks;
+using Eshopworld.Core;
+using JetBrains.Annotations;
+using Microsoft.Azure.Management.Fluent;
+using Microsoft.Azure.Management.ResourceManager.Fluent;
+using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
+using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
+using Microsoft.Azure.Management.ServiceBus.Fluent;
+using Microsoft.Azure.ServiceBus.Core;
+using Microsoft.Azure.Services.AppAuthentication;
+using Microsoft.Rest;
 
+namespace Eshopworld.Messaging
+{
     /// <summary>
     /// The main messenger entry point.
     /// It is recommended that only one messenger exists per application so you should always give this a singleton lifecycle.
@@ -23,11 +31,14 @@
         internal readonly object Gate = new object();
         internal readonly string ConnectionString;
         internal readonly string SubscriptionId;
+        internal readonly string NamespaceName;
 
         internal readonly ISubject<object> MessagesIn = new Subject<object>();
 
         internal ConcurrentDictionary<Type, IDisposable> MessageSubs = new ConcurrentDictionary<Type, IDisposable>();
         internal ConcurrentDictionary<Type, ServiceBusAdapter> ServiceBusAdapters = new ConcurrentDictionary<Type, ServiceBusAdapter>();
+
+        internal IServiceBusNamespace AzureServiceBusNamespace;
 
         internal ServiceBusAdapter<T> GetQueueAdapterIfExists<T>() where T : class =>
             ServiceBusAdapters.TryGetValue(typeof(T), out var result)
@@ -43,6 +54,7 @@
         {
             ConnectionString = connectionString;
             SubscriptionId = subscriptionId;
+            NamespaceName = ConnectionString.GetNamespaceNameFromConnectionString();
         }
 
         /// <inheritdoc />
@@ -138,6 +150,36 @@
         /// <inheritdoc />
         public void SetBatchSize<T>(int batchSize) where T : class => GetQueueAdapterIfExists<T>().SetBatchSize(batchSize);
 
+        internal IServiceBusNamespace GetRefreshedServiceBusNamespace()
+        {
+            try
+            {
+                if (AzureServiceBusNamespace != null) return AzureServiceBusNamespace.Refresh();
+            }
+            catch{ /* soak */ }
+
+            var token = new AzureServiceTokenProvider().GetAccessTokenAsync("https://management.core.windows.net/", string.Empty).Result;
+            var tokenCredentials = new TokenCredentials(token);
+
+            var client = RestClient.Configure()
+                .WithEnvironment(AzureEnvironment.AzureGlobalCloud)
+                .WithLogLevel(HttpLoggingDelegatingHandler.Level.Basic)
+                .WithCredentials(new AzureCredentials(tokenCredentials, tokenCredentials, string.Empty, AzureEnvironment.AzureGlobalCloud))
+                .Build();
+
+            AzureServiceBusNamespace = Azure.Authenticate(client, string.Empty)
+                .WithSubscription(SubscriptionId)
+                .ServiceBusNamespaces.List()
+                .SingleOrDefault(n => n.Name == NamespaceName);
+
+            if (AzureServiceBusNamespace == null)
+            {
+                throw new InvalidOperationException($"Couldn't find the service bus namespace {NamespaceName} in the subscription with ID {SubscriptionId}");
+            }
+
+            return AzureServiceBusNamespace;
+        }
+
         /// <summary>
         /// Sets the messenger up for either sending or receiving a specific message of type <typeparamref name="T"/>.
         /// This will create the <see cref="ServiceBusAdapter"/> but will not set it up for reading the queue.
@@ -149,16 +191,17 @@
         internal ServiceBusAdapter<T> SetupMessageType<T>(int batchSize, MessagingTransport transport) where T : class
         {
             ServiceBusAdapter adapter = null;
+            var messageType = typeof(T);
 
             if (!ServiceBusAdapters.ContainsKey(typeof(T)))
             {
                 switch (transport)
                 {
                     case MessagingTransport.Queue:
-                        adapter = new QueueAdapter<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver(), batchSize);
+                        adapter = new QueueAdapter<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver(), batchSize, this);
                         break;
                     case MessagingTransport.Topic:
-                        adapter = new TopicAdapter<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver(), batchSize);
+                        adapter = new TopicAdapter<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver(), batchSize, this);
                         break;
                     default:
                         throw new InvalidOperationException($"The {nameof(MessagingTransport)} was extended and the use case on the {nameof(SetupMessageType)} switch wasn't.");

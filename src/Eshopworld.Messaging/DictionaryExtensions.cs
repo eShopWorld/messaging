@@ -1,8 +1,8 @@
-﻿namespace Eshopworld.Messaging
-{
-    using System;
-    using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
+namespace Eshopworld.Messaging
+{
     /// <summary>
     /// Contains extensions to <see cref="System.Collections.IDictionary"/>.
     /// </summary>

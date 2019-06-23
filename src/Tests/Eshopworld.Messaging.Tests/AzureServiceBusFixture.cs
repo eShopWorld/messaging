@@ -42,9 +42,9 @@
                                                        new DefaultKeyVaultSecretManager())
                                                    .Build();
 
-            config.GetSection("Messaging").Bind(ConfigSettings);
+            config.Bind(ConfigSettings);
 
-            var namespaceName = Regex.Match(ConfigSettings.ConnectionString, @"Endpoint=sb:\/\/([^.]*)", RegexOptions.IgnoreCase).Groups[1].Value;
+            var namespaceName = Regex.Match(ConfigSettings.ServiceBusConnectionString, @"Endpoint=sb:\/\/([^.]*)", RegexOptions.IgnoreCase).Groups[1].Value;
 
             var token = tokenProvider.GetAccessTokenAsync("https://management.core.windows.net/", string.Empty).Result;
             var tokenCredentials = new TokenCredentials(token);
@@ -56,13 +56,13 @@
                                    .Build();
 
             ServiceBusNamespace = Azure.Authenticate(client, string.Empty)
-                                       .WithSubscription(ConfigSettings.SubscriptionId)
+                                       .WithSubscription(ConfigSettings.AzureSubscriptionId)
                                        .ServiceBusNamespaces.List()
                                        .SingleOrDefault(n => n.Name == namespaceName);
 
             if (ServiceBusNamespace == null)
             {
-                throw new InvalidOperationException($"Couldn't find the service bus namespace {namespaceName} in the subscription with ID {ConfigSettings.SubscriptionId}");
+                throw new InvalidOperationException($"Couldn't find the service bus namespace {namespaceName} in the subscription with ID {ConfigSettings.AzureSubscriptionId}");
             }
         }
     }
@@ -80,8 +80,8 @@
     /// </summary>
     public class MessagingSettings
     {
-        public string ConnectionString { get; set; }
+        public string ServiceBusConnectionString { get; set; }
 
-        public string SubscriptionId { get; set; }
+        public string AzureSubscriptionId { get; set; }
     }
 }

@@ -1,15 +1,15 @@
-﻿namespace Eshopworld.Messaging
-{
-    using System;
-    using System.Text;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using JetBrains.Annotations;
-    using Microsoft.Azure.Management.ServiceBus.Fluent;
-    using Microsoft.Azure.ServiceBus;
-    using Microsoft.Azure.ServiceBus.Core;
-    using Newtonsoft.Json;
+﻿using System;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using JetBrains.Annotations;
+using Microsoft.Azure.Management.ServiceBus.Fluent;
+using Microsoft.Azure.ServiceBus;
+using Microsoft.Azure.ServiceBus.Core;
+using Newtonsoft.Json;
 
+namespace Eshopworld.Messaging
+{
     /// <summary>
     /// Generics based message queue router from <see cref="IObservable{T}"/> through to the <see cref="QueueClient"/>.
     /// </summary>
@@ -17,9 +17,12 @@
     internal sealed class TopicAdapter<T> : ServiceBusAdapter<T>
         where T : class
     {
-        internal readonly ITopic AzureTopic;
+        internal readonly string ConnectionString;
+        internal readonly Messenger Messenger;
+        internal readonly Type TopicType;
+        internal ITopic AzureTopic;
         internal TopicClient Sender;
-        internal ISubscription AzureSubscription;
+        internal ISubscription AzureTopicSubscription;
 
         /// <summary>
         /// Initializes a new instance of <see cref="TopicAdapter{T}"/>.
@@ -28,18 +31,23 @@
         /// <param name="subscriptionId">The ID of the subscription where the service bus namespace lives.</param>
         /// <param name="messagesIn">The <see cref="IObserver{IMessage}"/> used to push received messages into the pipeline.</param>
         /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
-        /// <param name="typeOverride">The type override when we're creating a topic adapter for <see cref="string"/> types.</param>
-        public TopicAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize, Type typeOverride = null)
-            : base(connectionString, subscriptionId, messagesIn, batchSize, typeOverride)
+        /// <param name="messenger">The <see cref="Messenger"/> instance that created this adapter.</param>
+        public TopicAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize, Messenger messenger)
+            : base(messagesIn, batchSize)
         {
-            if (typeof(T) == typeof(Message) && typeOverride == null)
-                throw new InvalidOperationException($"You can't create a TopicAdapter of type {typeof(Message).FullName} without specifying a typeOverride");
+            ConnectionString = connectionString;
+            Messenger = messenger;
 
-            if(typeof(T) != typeof(Message) && typeOverride != null)
-                throw new InvalidOperationException($"typeOverride is only respected if you're creating a TopicAdapter where T:{typeof(Message).FullName}, and this one is for {typeof(T).FullName}");
+            TopicType = typeof(T);
 
-            var topicType = typeOverride ?? typeof(T);
-            AzureTopic = AzureServiceBusNamespace.CreateTopicIfNotExists(topicType.GetEntityName()).Result;
+            if (TopicType.FullName?.Length > 260) // SB quota: Entity path max length
+            {
+                throw new InvalidOperationException(
+                    $@"You can't create queues for the type {TopicType.FullName} because the full name (namespace + name) exceeds 260 characters.
+I suggest you reduce the size of the namespace: '{TopicType.Namespace}'.");
+            }
+
+            AzureTopic = Messenger.GetRefreshedServiceBusNamespace().CreateTopicIfNotExists(TopicType.GetEntityName()).Result;
             Sender = new TopicClient(connectionString, AzureTopic.Name, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
         }
 
@@ -60,8 +68,8 @@
 
             Receiver = new MessageReceiver(ConnectionString, EntityNameHelper.FormatSubscriptionPath(AzureTopic.Name, subscriptionName), ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3), BatchSize);
 
-            AzureSubscription = await AzureTopic.CreateSubscriptionIfNotExists(subscriptionName);
-            LockInSeconds = AzureSubscription.LockDurationInSeconds;
+            AzureTopicSubscription = await GetRefreshedTopic().CreateSubscriptionIfNotExists(subscriptionName);
+            LockInSeconds = AzureTopicSubscription.LockDurationInSeconds;
             LockTickInSeconds = (long)Math.Floor(LockInSeconds * 0.8); // renew at 80% to cope with load
 
             if (ReadTimer != null) return;
@@ -86,6 +94,19 @@
             };
 
             await Sender.SendAsync(qMessage).ConfigureAwait(false);
+        }
+
+        internal ITopic GetRefreshedTopic()
+        {
+            try
+            {
+                if(AzureTopic != null) return AzureTopic.Refresh();
+            }
+            catch { /* soak */ }
+
+            AzureTopic = Messenger.GetRefreshedServiceBusNamespace().CreateTopicIfNotExists(TopicType.GetEntityName()).Result;
+
+            return AzureTopic;
         }
 
         protected override void Dispose(bool disposing)

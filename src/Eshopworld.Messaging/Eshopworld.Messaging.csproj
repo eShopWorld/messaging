@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     
-    <Version>1.0.1</Version>
-    <PackageReleaseNotes>Added an internal optional route to bypass event deserialization during subscribe.</PackageReleaseNotes>
+    <Version>1.0.2</Version>
+    <PackageReleaseNotes>Fixed a bug where we were caching fluent objects that would expire the token in certain scenarios.</PackageReleaseNotes>
 
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>

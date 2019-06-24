@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     
-    <Version>1.0.1</Version>
-    <PackageReleaseNotes>Added an internal optional route to bypass event deserialization during subscribe.</PackageReleaseNotes>
+    <Version>1.0.2</Version>
+    <PackageReleaseNotes>Fixed a bug where we were caching fluent objects that would expire the token in certain scenarios.</PackageReleaseNotes>
 
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
@@ -24,12 +24,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="eshopworld.core" Version="2.0.0" />
-    <PackageReference Include="jetbrains.annotations" Version="2018.2.1" />
-    <PackageReference Include="microsoft.azure.management.fluent" Version="1.15.1" />
-    <PackageReference Include="microsoft.azure.servicebus" Version="3.1.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.8.0" />
-    <PackageReference Include="system.reactive" Version="4.1.0" />
+    <PackageReference Include="eshopworld.core" Version="2.1.1" />
+    <PackageReference Include="jetbrains.annotations" Version="2019.1.1" />
+    <PackageReference Include="microsoft.azure.management.fluent" Version="1.22.2" />
+    <PackageReference Include="microsoft.azure.servicebus" Version="3.4.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.1.1" />
+    <PackageReference Include="system.reactive" Version="4.1.5" />
   </ItemGroup>
 
 </Project>

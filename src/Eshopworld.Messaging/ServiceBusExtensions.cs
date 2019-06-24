@@ -1,13 +1,12 @@
-﻿using System.Text.RegularExpressions;
+﻿using System;
+using System.Diagnostics;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using Microsoft.Azure.Management.ServiceBus.Fluent;
 
 namespace Eshopworld.Messaging
 {
-    using System;
-    using System.Diagnostics;
-    using System.Linq;
-    using System.Threading.Tasks;
-    using Microsoft.Azure.Management.ServiceBus.Fluent;
-
     /// <summary>
     /// Contains extensions to the ServiceBus Fluent SDK: <see cref="Microsoft.Azure.Management.ServiceBus.Fluent"/>.
     /// </summary>

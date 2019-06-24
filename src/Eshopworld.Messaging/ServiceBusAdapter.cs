@@ -1,26 +1,16 @@
-﻿namespace Eshopworld.Messaging
-{
-    using System;
-    using System.Collections.Generic;
-    using System.Diagnostics.CodeAnalysis;
-    using System.Linq;
-    using System.Text;
-    using System.Text.RegularExpressions;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using Core;
-    using JetBrains.Annotations;
-    using Microsoft.Azure.Management.Fluent;
-    using Microsoft.Azure.Management.ResourceManager.Fluent;
-    using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
-    using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
-    using Microsoft.Azure.Management.ServiceBus.Fluent;
-    using Microsoft.Azure.ServiceBus;
-    using Microsoft.Azure.ServiceBus.Core;
-    using Microsoft.Azure.Services.AppAuthentication;
-    using Microsoft.Rest;
-    using Newtonsoft.Json;
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using Eshopworld.Core;
+using JetBrains.Annotations;
+using Microsoft.Azure.ServiceBus;
+using Microsoft.Azure.ServiceBus.Core;
+using Newtonsoft.Json;
 
+namespace Eshopworld.Messaging
+{
     internal abstract class ServiceBusAdapter<T> : ServiceBusAdapter
         where T : class
     {
@@ -33,17 +23,14 @@
         internal Timer ReadTimer;
         internal int BatchSize;
 
-        internal readonly string ConnectionString;
 
         internal long LockInSeconds;
         internal long LockTickInSeconds;
 
-        protected ServiceBusAdapter([NotNull] string connectionString, [NotNull] string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize, Type typeOverride)
-            : base(connectionString, subscriptionId, typeOverride ?? typeof(T))
+        protected ServiceBusAdapter([NotNull]IObserver<T> messagesIn, int batchSize)
         {
             MessagesIn = messagesIn;
             BatchSize = batchSize;
-            ConnectionString = connectionString;
 
             RawMessages = typeof(T) == typeof(Message);
         }
@@ -189,51 +176,7 @@
     /// </summary>
     internal abstract class ServiceBusAdapter : IDisposable
     {
-        [SuppressMessage("Critical Code Smell", "S2223:Non-constant static fields should not be visible", Justification = "Performance")]
-        protected static IServiceBusNamespace AzureServiceBusNamespace;
         internal readonly object Gate = new object();
-
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="ServiceBusAdapter"/>.
-        /// </summary>
-        /// <param name="connectionString">The Azure Service Bus connection string.</param>
-        /// <param name="subscriptionId">The ID of the subscription where the service bus namespace lives.</param>
-        /// <param name="messageType">The fully strongly typed <see cref="Type"/> of the message we want to create the queue for.</param>
-        [SuppressMessage("Major Code Smell", "S3010:Static fields should not be updated in constructors", Justification = "Performance")]
-        protected ServiceBusAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]Type messageType)
-        {
-            if (messageType.FullName?.Length > 260) // SB quota: Entity path max length
-            {
-                throw new InvalidOperationException(
-                    $@"You can't create queues for the type {messageType.FullName} because the full name (namespace + name) exceeds 260 characters.
-I suggest you reduce the size of the namespace: '{messageType.Namespace}'.");
-            }
-
-            var namespaceName = connectionString.GetNamespaceNameFromConnectionString();
-
-            if (AzureServiceBusNamespace == null)
-            {
-                var token = new AzureServiceTokenProvider().GetAccessTokenAsync("https://management.core.windows.net/", string.Empty).Result;
-                var tokenCredentials = new TokenCredentials(token);
-
-                var client = RestClient.Configure()
-                    .WithEnvironment(AzureEnvironment.AzureGlobalCloud)
-                    .WithLogLevel(HttpLoggingDelegatingHandler.Level.Basic)
-                    .WithCredentials(new AzureCredentials(tokenCredentials, tokenCredentials, string.Empty, AzureEnvironment.AzureGlobalCloud))
-                    .Build();
-
-                AzureServiceBusNamespace = Azure.Authenticate(client, string.Empty)
-                    .WithSubscription(subscriptionId)
-                    .ServiceBusNamespaces.List()
-                    .SingleOrDefault(n => n.Name == namespaceName);
-
-                if (AzureServiceBusNamespace == null)
-                {
-                    throw new InvalidOperationException($"Couldn't find the service bus namespace {namespaceName} in the subscription with ID {subscriptionId}");
-                }
-            }
-        }
 
         /// <inheritdoc />
         public void Dispose()

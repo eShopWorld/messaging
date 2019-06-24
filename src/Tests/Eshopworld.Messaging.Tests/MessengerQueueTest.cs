@@ -24,31 +24,31 @@ public class MessengerQueueTest
         ServiceBusFixture = serviceBusFixture;
     }
 
-    [Fact, IsIntegration]
+    [Fact, IsLayer1]
     public async Task Test_SendCreatesTheQueue()
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
 
-        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
+        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
         {
             await msn.Send(new TestMessage());
             ServiceBusFixture.ServiceBusNamespace.AssertSingleQueueExists(typeof(TestMessage));
         }
     }
 
-    [Fact, IsIntegration]
+    [Fact, IsLayer1]
     public async Task Test_ReceiveCreatesTheQueue()
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
 
-        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
+        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
         {
             msn.Receive<TestMessage>(_ => { });
             ServiceBusFixture.ServiceBusNamespace.AssertSingleQueueExists(typeof(TestMessage));
         }
     }
 
-    [Fact, IsIntegration]
+    [Fact, IsLayer1]
     public async Task Test_SendingRandomMessages()
     {
         var sendCount = new Random().Next(1, 10);
@@ -58,7 +58,7 @@ public class MessengerQueueTest
         var messages = new List<TestMessage>();
         for (var i = 0; i < sendCount; i++) { messages.Add(new TestMessage()); }
 
-        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
+        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
         {
             foreach (var message in messages)
             {
@@ -67,14 +67,14 @@ public class MessengerQueueTest
 
             await Task.Delay(TimeSpan.FromSeconds(5)); // wait 5 seconds to flush out all the messages
 
-            var receiver = new MessageReceiver(ServiceBusFixture.ConfigSettings.ConnectionString, typeof(TestMessage).GetEntityName(), ReceiveMode.ReceiveAndDelete, null, sendCount);
+            var receiver = new MessageReceiver(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, typeof(TestMessage).GetEntityName(), ReceiveMode.ReceiveAndDelete, null, sendCount);
             var rMessages = (await receiver.ReadBatchAsync<TestMessage>(sendCount)).ToList();
 
             rMessages.Should().BeEquivalentTo(messages);
         }
     }
 
-    [Fact, IsIntegration]
+    [Fact, IsLayer1]
     public async Task Test_ReceivingRandomMessages()
     {
         var receiveCount = new Random().Next(1, 10);
@@ -85,7 +85,7 @@ public class MessengerQueueTest
         for (var i = 0; i < receiveCount; i++) { messages.Add(new TestMessage()); }
 
         using (var ts = new CancellationTokenSource())
-        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
+        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
         {
             // We need to create the messenger before sending the messages to avoid writing non necessary code to create the queue
             // during the test. Receive will create the queue automatically. This breaks the AAA pattern by design.
@@ -98,7 +98,7 @@ public class MessengerQueueTest
                     if (rMessages.Count == messages.Count) ts.Cancel(); // kill switch
                 });
 
-            var sender = new MessageSender(ServiceBusFixture.ConfigSettings.ConnectionString, typeof(TestMessage).GetEntityName());
+            var sender = new MessageSender(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, typeof(TestMessage).GetEntityName());
             await sender.WriteBatchAsync(messages);
 
             try
@@ -111,12 +111,12 @@ public class MessengerQueueTest
         }
     }
 
-    [Fact, IsIntegration]
+    [Fact, IsLayer1]
     public async Task Test_LockMessage_ForFiveMinutes()
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
 
-        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
+        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
         {
             await msn.Send(new TestMessage());
 
@@ -135,13 +135,13 @@ public class MessengerQueueTest
         }
     }
 
-    [Fact, IsIntegration]
+    [Fact, IsLayer1]
     public async Task Test_LockAbandon_MessageFlow()
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
 
         using (var ts = new CancellationTokenSource())
-        using (var msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
+        using (var msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
         {
             await msn.Send(new TestMessage());
 
@@ -167,13 +167,13 @@ public class MessengerQueueTest
         }
     }
 
-    [Fact, IsIntegration]
+    [Fact, IsLayer1]
     public async Task Test_LockComplete_MessageFlow()
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
 
         using (var ts = new CancellationTokenSource())
-        using (var msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
+        using (var msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
         {
             await msn.Send(new TestMessage());
 
@@ -198,13 +198,13 @@ public class MessengerQueueTest
         }
     }
 
-    [Fact, IsIntegration]
+    [Fact, IsLayer1]
     public async Task Test_LockError_MessageFlow()
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
 
         using (var ts = new CancellationTokenSource())
-        using (var msn = new Messenger(ServiceBusFixture.ConfigSettings.ConnectionString, ServiceBusFixture.ConfigSettings.SubscriptionId))
+        using (var msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
         {
             var message = new TestMessage();
             await msn.Send(message);
@@ -225,7 +225,7 @@ public class MessengerQueueTest
             }
             catch (TaskCanceledException) { /* soak the kill switch */ }
 
-            var receiver = new MessageReceiver(ServiceBusFixture.ConfigSettings.ConnectionString, EntityNameHelper.FormatDeadLetterPath(typeof(TestMessage).GetEntityName()), ReceiveMode.ReceiveAndDelete);
+            var receiver = new MessageReceiver(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, EntityNameHelper.FormatDeadLetterPath(typeof(TestMessage).GetEntityName()), ReceiveMode.ReceiveAndDelete);
             var rMessage = (await receiver.ReadBatchAsync<TestMessage>(1)).FirstOrDefault();
 
             rMessage.Should().NotBeNull();

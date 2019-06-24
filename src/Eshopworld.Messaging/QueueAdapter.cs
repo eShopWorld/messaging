@@ -1,15 +1,15 @@
-﻿namespace Eshopworld.Messaging
-{
-    using System;
-    using System.Text;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using JetBrains.Annotations;
-    using Microsoft.Azure.Management.ServiceBus.Fluent;
-    using Microsoft.Azure.ServiceBus;
-    using Microsoft.Azure.ServiceBus.Core;
-    using Newtonsoft.Json;
+﻿using System;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using JetBrains.Annotations;
+using Microsoft.Azure.Management.ServiceBus.Fluent;
+using Microsoft.Azure.ServiceBus;
+using Microsoft.Azure.ServiceBus.Core;
+using Newtonsoft.Json;
 
+namespace Eshopworld.Messaging
+{
     /// <summary>
     /// Generics based message queue router from <see cref="IObservable{T}"/> through to the <see cref="QueueClient"/>.
     /// </summary>
@@ -17,6 +17,7 @@
     internal sealed class QueueAdapter<T> : ServiceBusAdapter<T>
         where T : class
     {
+        internal readonly Messenger Messenger;
         internal readonly IQueue AzureQueue;
         internal readonly MessageSender Sender;
 
@@ -27,10 +28,12 @@
         /// <param name="subscriptionId">The ID of the subscription where the service bus namespace lives.</param>
         /// <param name="messagesIn">The <see cref="IObserver{IMessage}"/> used to push received messages into the pipeline.</param>
         /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
-        public QueueAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize)
-            : base(connectionString, subscriptionId, messagesIn, batchSize, typeOverride: null)
+        /// <param name="messenger">The <see cref="Messenger"/> instance that created this adapter.</param>
+        public QueueAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize, Messenger messenger)
+            : base(messagesIn, batchSize)
         {
-            AzureQueue = AzureServiceBusNamespace.CreateQueueIfNotExists(typeof(T).GetEntityName()).Result;
+            Messenger = messenger;
+            AzureQueue = Messenger.GetRefreshedServiceBusNamespace().CreateQueueIfNotExists(typeof(T).GetEntityName()).Result;
 
             LockInSeconds = AzureQueue.LockDurationInSeconds;
             LockTickInSeconds = (long)Math.Floor(LockInSeconds * 0.8); // renew at 80% to cope with load

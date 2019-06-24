@@ -14,7 +14,7 @@
     <PackageId>Eshopworld.Messaging</PackageId>
     <Authors>David Rodrigues</Authors>
     <Company>eShopWorld</Company>
-    <PackageLicenseUrl>https://github.com/eShopWorld/messaging/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/eShopWorld/messaging</PackageProjectUrl>
     <Description>eShopWorld messaging package</Description>
     <Product>Eshopworld.Messaging</Product>

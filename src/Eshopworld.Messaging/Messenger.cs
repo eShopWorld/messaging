@@ -150,6 +150,11 @@ namespace Eshopworld.Messaging
         /// <inheritdoc />
         public void SetBatchSize<T>(int batchSize) where T : class => GetQueueAdapterIfExists<T>().SetBatchSize(batchSize);
 
+        /// <summary>
+        /// Attempts to refresh the stored <see cref="IServiceBusNamespace"/> fluent construct.
+        ///     Will do a full rebuild if any type of failure occurs during the refresh.
+        /// </summary>
+        /// <returns>The refreshed <see cref="IServiceBusNamespace"/>.</returns>
         internal IServiceBusNamespace GetRefreshedServiceBusNamespace()
         {
             try

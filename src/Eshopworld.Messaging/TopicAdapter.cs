@@ -96,6 +96,11 @@ I suggest you reduce the size of the namespace: '{TopicType.Namespace}'.");
             await Sender.SendAsync(qMessage).ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// Attempts to refresh the stored <see cref="ITopic"/> fluent construct.
+        ///     Will do a full rebuild if any type of failure occurs during the refresh.
+        /// </summary>
+        /// <returns>The refreshed <see cref="ITopic"/>.</returns>
         internal ITopic GetRefreshedTopic()
         {
             try
@@ -109,6 +114,7 @@ I suggest you reduce the size of the namespace: '{TopicType.Namespace}'.");
             return AzureTopic;
         }
 
+        /// <inheritdoc />
         protected override void Dispose(bool disposing)
         {
             if (disposing)

@@ -20,8 +20,6 @@ namespace Eshopworld.Messaging
         /// <returns>The <see cref="IQueue"/> entity object that references the Azure queue.</returns>
         public static async Task<IQueue> CreateQueueIfNotExists(this IServiceBusNamespace sbNamespace, string name)
         {
-            await sbNamespace.RefreshAsync();
-
             var queue = (await sbNamespace.Queues.ListAsync()).SingleOrDefault(q => q.Name == name.ToLower());
             if (queue != null) return queue;
 
@@ -45,15 +43,13 @@ namespace Eshopworld.Messaging
         /// <returns>The <see cref="ITopic"/> entity object that references the Azure topic.</returns>
         public static async Task<ITopic> CreateTopicIfNotExists(this IServiceBusNamespace sbNamespace, string name)
         {
-            await sbNamespace.RefreshAsync();
-
             var topic = (await sbNamespace.Topics.ListAsync()).SingleOrDefault(t => t.Name == name.ToLower());
             if (topic != null) return topic;
 
             await sbNamespace.Topics
-                .Define(name.ToLower())
-                .WithDuplicateMessageDetection(TimeSpan.FromMinutes(10))
-                .CreateAsync();
+                             .Define(name.ToLower())
+                             .WithDuplicateMessageDetection(TimeSpan.FromMinutes(10))
+                             .CreateAsync();
 
             await sbNamespace.RefreshAsync();
             return (await sbNamespace.Topics.ListAsync()).Single(t => t.Name == name.ToLower());
@@ -67,17 +63,15 @@ namespace Eshopworld.Messaging
         /// <returns>The <see cref="ISubscription"/> entity object that references the subscription.</returns>
         public static async Task<ISubscription> CreateSubscriptionIfNotExists(this ITopic topic, string name)
         {
-            await topic.RefreshAsync();
-
             var subscription = (await topic.Subscriptions.ListAsync()).SingleOrDefault(s => s.Name == name.ToLower());
             if (subscription != null) return subscription;
 
             await topic.Subscriptions
-                .Define(name.ToLower())
-                .WithMessageLockDurationInSeconds(60)
-                .WithExpiredMessageMovedToDeadLetterSubscription()
-                .WithMessageMovedToDeadLetterSubscriptionOnMaxDeliveryCount(10)
-                .CreateAsync();
+                       .Define(name.ToLower())
+                       .WithMessageLockDurationInSeconds(60)
+                       .WithExpiredMessageMovedToDeadLetterSubscription()
+                       .WithMessageMovedToDeadLetterSubscriptionOnMaxDeliveryCount(10)
+                       .CreateAsync();
 
             await topic.RefreshAsync();
             return (await topic.Subscriptions.ListAsync()).Single(t => t.Name == name.ToLower());

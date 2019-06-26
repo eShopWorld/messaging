@@ -36,13 +36,14 @@ namespace Eshopworld.Messaging
         {
             ConnectionString = connectionString;
             Messenger = messenger;
-            AzureQueue = Messenger.GetRefreshedServiceBusNamespace().CreateQueueIfNotExists(typeof(T).GetEntityName()).Result;
+            AzureQueue = Messenger.GetRefreshedServiceBusNamespace().ConfigureAwait(false).GetAwaiter().GetResult()
+                                  .CreateQueueIfNotExists(typeof(T).GetEntityName()).ConfigureAwait(false).GetAwaiter().GetResult();
 
             LockInSeconds = AzureQueue.LockDurationInSeconds;
-            LockTickInSeconds = (long)Math.Floor(LockInSeconds * 0.8); // renew at 80% to cope with load
+            LockTickInSeconds = (long) Math.Floor(LockInSeconds * 0.8); // renew at 80% to cope with load
 
-            RebuildReceiver();
-            RebuildSender();
+            RebuildReceiver().ConfigureAwait(false).GetAwaiter().GetResult();
+            RebuildSender().ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -71,18 +72,19 @@ namespace Eshopworld.Messaging
                 Label = message.GetType().FullName
             };
 
-            await SendPolicy.ExecuteAsync(async () =>
-            {
-                try
+            await SendPolicy.ExecuteAsync(
+                async () =>
                 {
-                    await Sender.SendAsync(qMessage).ConfigureAwait(false);
-                }
-                catch
-                {
-                    RebuildSender();
-                    throw;
-                }
-            });
+                    try
+                    {
+                        await Sender.SendAsync(qMessage).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        await RebuildSender().ConfigureAwait(false);
+                        throw;
+                    }
+                }).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
@@ -90,8 +92,8 @@ namespace Eshopworld.Messaging
         {
             if (disposing)
             {
-                Receiver.CloseAsync().Wait();
-                Sender.CloseAsync().Wait();
+                Receiver.CloseAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+                Sender.CloseAsync().ConfigureAwait(false).GetAwaiter().GetResult();
 
                 ReadTimer?.Dispose();
             }
@@ -100,16 +102,24 @@ namespace Eshopworld.Messaging
         }
 
         /// <inheritdoc />
-        protected override void RebuildReceiver()
+        protected override async Task RebuildReceiver()
         {
-            Receiver?.CloseAsync().Wait();
+            if (Receiver != null && !Receiver.IsClosedOrClosing)
+            {
+                await Receiver.CloseAsync().ConfigureAwait(false);
+            }
+
             Receiver = new MessageReceiver(ConnectionString, AzureQueue.Name, ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3), BatchSize);
         }
 
         /// <inheritdoc />
-        protected override void RebuildSender()
+        protected override async Task RebuildSender()
         {
-            Sender?.CloseAsync().Wait();
+            if (Sender != null && !Sender.IsClosedOrClosing)
+            {
+                await Sender.CloseAsync().ConfigureAwait(false);
+            }
+
             Sender = new MessageSender(ConnectionString, AzureQueue.Name, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
         }
     }

@@ -71,18 +71,19 @@ namespace Eshopworld.Messaging
         {
             var m = RawMessages ? message as Message : Messages[message];
 
-            await ReceivePolicy.ExecuteAsync(async () =>
-            {
-                try
+            await ReceivePolicy.ExecuteAsync(
+                async () =>
                 {
-                    await Receiver.CompleteAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
-                }
-                catch
-                {
-                    RebuildReceiver();
-                    throw;
-                }
-            });
+                    try
+                    {
+                        await Receiver.CompleteAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        await RebuildReceiver().ConfigureAwait(false);
+                        throw;
+                    }
+                }).ConfigureAwait(false);
 
             Release(message);
         }
@@ -95,18 +96,19 @@ namespace Eshopworld.Messaging
         {
             var m = RawMessages ? message as Message : Messages[message];
 
-            await ReceivePolicy.ExecuteAsync(async () =>
-            {
-                try
+            await ReceivePolicy.ExecuteAsync(
+                async () =>
                 {
-                    await Receiver.AbandonAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
-                }
-                catch
-                {
-                    RebuildReceiver();
-                    throw;
-                }
-            });
+                    try
+                    {
+                        await Receiver.AbandonAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        await RebuildReceiver().ConfigureAwait(false);
+                        throw;
+                    }
+                }).ConfigureAwait(false);
 
             Release(message);
         }
@@ -119,18 +121,19 @@ namespace Eshopworld.Messaging
         {
             var m = RawMessages ? message as Message : Messages[message];
 
-            await ReceivePolicy.ExecuteAsync(async () =>
-            {
-                try
+            await ReceivePolicy.ExecuteAsync(
+                async () =>
                 {
-                    await Receiver.DeadLetterAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
-                }
-                catch
-                {
-                    RebuildReceiver();
-                    throw;
-                }
-            });
+                    try
+                    {
+                        await Receiver.DeadLetterAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        await RebuildReceiver().ConfigureAwait(false);
+                        throw;
+                    }
+                }).ConfigureAwait(false);
 
             Release(message);
         }
@@ -145,18 +148,19 @@ namespace Eshopworld.Messaging
         {
             var m = RawMessages ? message as Message : Messages[message];
 
-            await ReceivePolicy.ExecuteAsync(async () =>
-            {
-                try
+            await ReceivePolicy.ExecuteAsync(
+                async () =>
                 {
-                    await Receiver.RenewLockAsync(m).ConfigureAwait(false);
-                }
-                catch
-                {
-                    RebuildReceiver();
-                    throw;
-                }
-            });
+                    try
+                    {
+                        await Receiver.RenewLockAsync(m).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        await RebuildReceiver().ConfigureAwait(false);
+                        throw;
+                    }
+                }).ConfigureAwait(false);
 
             LockTimers.Add(
                 message,
@@ -176,18 +180,19 @@ namespace Eshopworld.Messaging
             if (Receiver.IsClosedOrClosing) return;
             IList<Message> messages = null;
 
-            await ReceivePolicy.ExecuteAsync(async () =>
-            {
-                try
+            await ReceivePolicy.ExecuteAsync(
+                async () =>
                 {
-                    messages = await Receiver.ReceiveAsync(BatchSize).ConfigureAwait(false);
-                }
-                catch
-                {
-                    RebuildReceiver();
-                    throw;
-                }
-            });
+                    try
+                    {
+                        messages = await Receiver.ReceiveAsync(BatchSize).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        await RebuildReceiver().ConfigureAwait(false);
+                        throw;
+                    }
+                }).ConfigureAwait(false);
 
             if (messages == null) return;
 
@@ -231,7 +236,7 @@ namespace Eshopworld.Messaging
             if (disposing)
             {
                 ReadTimer?.Dispose();
-                Receiver?.CloseAsync().Wait();
+                Receiver?.CloseAsync().ConfigureAwait(false).GetAwaiter().GetResult();
             }
         }
 
@@ -241,7 +246,7 @@ namespace Eshopworld.Messaging
         ///     - On failure, rebuild and retry again right away
         ///     - If the retry fails -> throw
         /// </summary>
-        protected abstract void RebuildReceiver();
+        protected abstract Task RebuildReceiver();
 
         /// <summary>
         /// Rebuild the sender object used by the adapter implementation.
@@ -249,7 +254,7 @@ namespace Eshopworld.Messaging
         ///     - On failure, rebuild and retry again right away
         ///     - If the retry fails -> throw
         /// </summary>
-        protected abstract void RebuildSender();
+        protected abstract Task RebuildSender();
     }
 
     /// <summary>

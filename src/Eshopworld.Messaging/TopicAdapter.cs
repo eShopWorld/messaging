@@ -7,7 +7,6 @@ using Microsoft.Azure.Management.ServiceBus.Fluent;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.ServiceBus.Core;
 using Newtonsoft.Json;
-using Polly;
 
 namespace Eshopworld.Messaging
 {

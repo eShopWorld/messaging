@@ -1,20 +1,20 @@
-﻿namespace Eshopworld.Messaging.Tests
-{
-    using System;
-    using System.Linq;
-    using System.Text.RegularExpressions;
-    using Microsoft.Azure.KeyVault;
-    using Microsoft.Azure.Management.Fluent;
-    using Microsoft.Azure.Management.ResourceManager.Fluent;
-    using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
-    using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
-    using Microsoft.Azure.Management.ServiceBus.Fluent;
-    using Microsoft.Azure.Services.AppAuthentication;
-    using Microsoft.Extensions.Configuration;
-    using Microsoft.Extensions.Configuration.AzureKeyVault;
-    using Microsoft.Rest;
-    using Xunit;
+﻿using System;
+using System.Linq;
+using System.Text.RegularExpressions;
+using Microsoft.Azure.KeyVault;
+using Microsoft.Azure.Management.Fluent;
+using Microsoft.Azure.Management.ResourceManager.Fluent;
+using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
+using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
+using Microsoft.Azure.Management.ServiceBus.Fluent;
+using Microsoft.Azure.Services.AppAuthentication;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.AzureKeyVault;
+using Microsoft.Rest;
+using Xunit;
 
+namespace Eshopworld.Messaging.Tests
+{
     /// <summary>
     /// To be used on tests that manipulate entities in Azure Service Bus through the fluent SDK.
     ///     Finds and caches the correct instance of <see cref="IServiceBusNamespace"/> to use when

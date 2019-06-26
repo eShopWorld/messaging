@@ -1,14 +1,14 @@
-﻿namespace Eshopworld.Messaging.Tests
-{
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Text;
-    using System.Threading.Tasks;
-    using Microsoft.Azure.ServiceBus;
-    using Microsoft.Azure.ServiceBus.Core;
-    using Newtonsoft.Json;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Microsoft.Azure.ServiceBus;
+using Microsoft.Azure.ServiceBus.Core;
+using Newtonsoft.Json;
 
+namespace Eshopworld.Messaging.Tests
+{
     /// <summary>
     /// Contains test extensions for the several receive and send clients in the Azure Service Bus SDK.
     /// </summary>

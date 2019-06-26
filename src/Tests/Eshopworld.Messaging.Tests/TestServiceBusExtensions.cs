@@ -1,11 +1,11 @@
-﻿namespace Eshopworld.Messaging.Tests
-{
-    using System;
-    using System.Linq;
-    using System.Threading.Tasks;
-    using FluentAssertions;
-    using Microsoft.Azure.Management.ServiceBus.Fluent;
+﻿using System;
+using System.Linq;
+using System.Threading.Tasks;
+using FluentAssertions;
+using Microsoft.Azure.Management.ServiceBus.Fluent;
 
+namespace Eshopworld.Messaging.Tests
+{
     /// <summary>
     /// Contains extension methods for <see cref="Microsoft.Azure.Management.Fluent"/> around ServiceBus.
     /// </summary>

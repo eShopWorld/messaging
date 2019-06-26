@@ -17,9 +17,11 @@ namespace Eshopworld.Messaging
     internal sealed class QueueAdapter<T> : ServiceBusAdapter<T>
         where T : class
     {
+        internal readonly string ConnectionString;
         internal readonly Messenger Messenger;
         internal readonly IQueue AzureQueue;
-        internal readonly MessageSender Sender;
+
+        internal MessageSender Sender;
 
         /// <summary>
         /// Initializes a new instance of <see cref="QueueAdapter{T}"/>.
@@ -32,14 +34,15 @@ namespace Eshopworld.Messaging
         public QueueAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize, Messenger messenger)
             : base(messagesIn, batchSize)
         {
+            ConnectionString = connectionString;
             Messenger = messenger;
             AzureQueue = Messenger.GetRefreshedServiceBusNamespace().CreateQueueIfNotExists(typeof(T).GetEntityName()).Result;
 
             LockInSeconds = AzureQueue.LockDurationInSeconds;
             LockTickInSeconds = (long)Math.Floor(LockInSeconds * 0.8); // renew at 80% to cope with load
 
-            Receiver = new MessageReceiver(connectionString, AzureQueue.Name, ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3), batchSize);
-            Sender = new MessageSender(connectionString, AzureQueue.Name, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
+            RebuildReceiver();
+            RebuildSender();
         }
 
         /// <summary>
@@ -68,9 +71,21 @@ namespace Eshopworld.Messaging
                 Label = message.GetType().FullName
             };
 
-            await Sender.SendAsync(qMessage).ConfigureAwait(false);
+            await SendPolicy.ExecuteAsync(async () =>
+            {
+                try
+                {
+                    await Sender.SendAsync(qMessage).ConfigureAwait(false);
+                }
+                catch
+                {
+                    RebuildSender();
+                    throw;
+                }
+            });
         }
 
+        /// <inheritdoc />
         protected override void Dispose(bool disposing)
         {
             if (disposing)
@@ -82,6 +97,20 @@ namespace Eshopworld.Messaging
             }
 
             base.Dispose(disposing);
+        }
+
+        /// <inheritdoc />
+        protected override void RebuildReceiver()
+        {
+            Receiver?.CloseAsync().Wait();
+            Receiver = new MessageReceiver(ConnectionString, AzureQueue.Name, ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3), BatchSize);
+        }
+
+        /// <inheritdoc />
+        protected override void RebuildSender()
+        {
+            Sender?.CloseAsync().Wait();
+            Sender = new MessageSender(ConnectionString, AzureQueue.Name, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
         }
     }
 }

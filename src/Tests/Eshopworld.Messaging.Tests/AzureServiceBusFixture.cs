@@ -22,7 +22,7 @@
     /// </summary>
     public class AzureServiceBusFixture
     {
-        internal const string KeyVaultUriName = "TEST_KEYVAULT_URI";
+        internal const string KeyVaultUriName = "TestKeyvaultUri";
         internal readonly IServiceBusNamespace ServiceBusNamespace;
         internal readonly MessagingSettings ConfigSettings = new MessagingSettings();
 

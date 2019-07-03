@@ -102,7 +102,7 @@ namespace Eshopworld.Messaging
                 throw new InvalidOperationException("You already added a callback to this message type. Only one callback per type is supported.");
             }
 
-            await ((TopicAdapter<T>)SetupMessageType<T>(batchSize, MessagingTransport.Topic)).StartReading(subscriptionName);
+            await ((TopicAdapter<T>)SetupMessageType<T>(batchSize, MessagingTransport.Topic)).StartReading(subscriptionName).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
@@ -131,7 +131,7 @@ namespace Eshopworld.Messaging
         /// <inheritdoc />
         public async Task<IObservable<T>> GetEventObservable<T>(string subscriptionName, int batchSize = 10) where T : class
         {
-            await ((TopicAdapter<T>)SetupMessageType<T>(batchSize, MessagingTransport.Topic)).StartReading(subscriptionName);
+            await ((TopicAdapter<T>)SetupMessageType<T>(batchSize, MessagingTransport.Topic)).StartReading(subscriptionName).ConfigureAwait(false);
             return MessagesIn.OfType<T>().AsObservable();
         }
 
@@ -155,26 +155,27 @@ namespace Eshopworld.Messaging
         ///     Will do a full rebuild if any type of failure occurs during the refresh.
         /// </summary>
         /// <returns>The refreshed <see cref="IServiceBusNamespace"/>.</returns>
-        internal IServiceBusNamespace GetRefreshedServiceBusNamespace()
+        internal async Task<IServiceBusNamespace> GetRefreshedServiceBusNamespace()
         {
             try
             {
-                if (AzureServiceBusNamespace != null) return AzureServiceBusNamespace.Refresh();
+                if (AzureServiceBusNamespace != null) return await AzureServiceBusNamespace.RefreshAsync().ConfigureAwait(false);
             }
             catch{ /* soak */ }
 
-            var token = new AzureServiceTokenProvider().GetAccessTokenAsync("https://management.core.windows.net/", string.Empty).Result;
+            var token = await new AzureServiceTokenProvider().GetAccessTokenAsync("https://management.core.windows.net/", string.Empty).ConfigureAwait(false);
             var tokenCredentials = new TokenCredentials(token);
 
             var client = RestClient.Configure()
-                .WithEnvironment(AzureEnvironment.AzureGlobalCloud)
-                .WithLogLevel(HttpLoggingDelegatingHandler.Level.Basic)
-                .WithCredentials(new AzureCredentials(tokenCredentials, tokenCredentials, string.Empty, AzureEnvironment.AzureGlobalCloud))
-                .Build();
+                                   .WithEnvironment(AzureEnvironment.AzureGlobalCloud)
+                                   .WithLogLevel(HttpLoggingDelegatingHandler.Level.Basic)
+                                   .WithCredentials(new AzureCredentials(tokenCredentials, tokenCredentials, string.Empty, AzureEnvironment.AzureGlobalCloud))
+                                   .Build();
 
-            AzureServiceBusNamespace = Azure.Authenticate(client, string.Empty)
-                .WithSubscription(SubscriptionId)
-                .ServiceBusNamespaces.List()
+            AzureServiceBusNamespace = (await Azure.Authenticate(client, string.Empty)
+                                                   .WithSubscription(SubscriptionId)
+                                                   .ServiceBusNamespaces.ListAsync()
+                                                   .ConfigureAwait(false))
                 .SingleOrDefault(n => n.Name == NamespaceName);
 
             if (AzureServiceBusNamespace == null)

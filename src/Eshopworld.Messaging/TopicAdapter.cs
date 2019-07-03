@@ -23,6 +23,7 @@ namespace Eshopworld.Messaging
         internal ITopic AzureTopic;
         internal TopicClient Sender;
         internal ISubscription AzureTopicSubscription;
+        internal string SubscriptionName;
 
         /// <summary>
         /// Initializes a new instance of <see cref="TopicAdapter{T}"/>.
@@ -47,8 +48,10 @@ namespace Eshopworld.Messaging
 I suggest you reduce the size of the namespace: '{TopicType.Namespace}'.");
             }
 
-            AzureTopic = Messenger.GetRefreshedServiceBusNamespace().CreateTopicIfNotExists(TopicType.GetEntityName()).Result;
-            Sender = new TopicClient(connectionString, AzureTopic.Name, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
+            AzureTopic = Messenger.GetRefreshedServiceBusNamespace().ConfigureAwait(false).GetAwaiter().GetResult()
+                                  .CreateTopicIfNotExists(TopicType.GetEntityName()).ConfigureAwait(false).GetAwaiter().GetResult();
+
+            RebuildSender().ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -57,18 +60,12 @@ I suggest you reduce the size of the namespace: '{TopicType.Namespace}'.");
         /// <param name="subscriptionName">The name of the subscription that we want to read from.</param>
         internal async Task StartReading(string subscriptionName)
         {
-            if (Receiver != null)
-            {
-                try
-                {
-                    await Receiver.CloseAsync();
-                }
-                catch { /*soak*/ } // if it's already closed, Close() will throw. This is here for cases where StartReading is called in succession without calling StopReading.
-            }
+            await RebuildReceiver().ConfigureAwait(false);
 
-            Receiver = new MessageReceiver(ConnectionString, EntityNameHelper.FormatSubscriptionPath(AzureTopic.Name, subscriptionName), ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3), BatchSize);
+            AzureTopicSubscription = await (await GetRefreshedTopic().ConfigureAwait(false))
+                                           .CreateSubscriptionIfNotExists(subscriptionName)
+                                           .ConfigureAwait(false);
 
-            AzureTopicSubscription = await GetRefreshedTopic().CreateSubscriptionIfNotExists(subscriptionName);
             LockInSeconds = AzureTopicSubscription.LockDurationInSeconds;
             LockTickInSeconds = (long)Math.Floor(LockInSeconds * 0.8); // renew at 80% to cope with load
 
@@ -79,6 +76,8 @@ I suggest you reduce the size of the namespace: '{TopicType.Namespace}'.");
                 null,
                 TimeSpan.FromSeconds(1),
                 TimeSpan.FromSeconds(1));
+
+            SubscriptionName = subscriptionName;
         }
 
         /// <summary>
@@ -93,7 +92,19 @@ I suggest you reduce the size of the namespace: '{TopicType.Namespace}'.");
                 Label = message.GetType().FullName
             };
 
-            await Sender.SendAsync(qMessage).ConfigureAwait(false);
+            await SendPolicy.ExecuteAsync(
+                async () =>
+                {
+                    try
+                    {
+                        await Sender.SendAsync(qMessage).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        await RebuildSender().ConfigureAwait(false);
+                        throw;
+                    }
+                }).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -101,17 +112,42 @@ I suggest you reduce the size of the namespace: '{TopicType.Namespace}'.");
         ///     Will do a full rebuild if any type of failure occurs during the refresh.
         /// </summary>
         /// <returns>The refreshed <see cref="ITopic"/>.</returns>
-        internal ITopic GetRefreshedTopic()
+        internal async Task<ITopic> GetRefreshedTopic()
         {
             try
             {
-                if(AzureTopic != null) return AzureTopic.Refresh();
+                if(AzureTopic != null) return await AzureTopic.RefreshAsync().ConfigureAwait(false);
             }
             catch { /* soak */ }
 
-            AzureTopic = Messenger.GetRefreshedServiceBusNamespace().CreateTopicIfNotExists(TopicType.GetEntityName()).Result;
+            AzureTopic = await (await Messenger.GetRefreshedServiceBusNamespace()
+                                               .ConfigureAwait(false))
+                               .CreateTopicIfNotExists(TopicType.GetEntityName())
+                               .ConfigureAwait(false);
 
             return AzureTopic;
+        }
+
+        /// <inheritdoc />
+        protected override async Task RebuildReceiver()
+        {
+            if (Receiver != null && !Receiver.IsClosedOrClosing)
+            {
+                await Receiver.CloseAsync().ConfigureAwait(false);
+            }
+
+            Receiver = new MessageReceiver(ConnectionString, EntityNameHelper.FormatSubscriptionPath(AzureTopic.Name, SubscriptionName), ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3), BatchSize);
+        }
+
+        /// <inheritdoc />
+        protected override async Task RebuildSender()
+        {
+            if (Sender != null && !Sender.IsClosedOrClosing)
+            {
+                await Sender.CloseAsync().ConfigureAwait(false);
+            }
+
+            Sender = new TopicClient(ConnectionString, AzureTopic.Name, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
         }
 
         /// <inheritdoc />
@@ -119,7 +155,7 @@ I suggest you reduce the size of the namespace: '{TopicType.Namespace}'.");
         {
             if (disposing)
             {
-                Sender.CloseAsync().Wait();
+                Sender.CloseAsync().ConfigureAwait(false).GetAwaiter().GetResult();
             }
 
             base.Dispose(disposing);

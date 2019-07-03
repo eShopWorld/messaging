@@ -8,6 +8,8 @@ using JetBrains.Annotations;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.ServiceBus.Core;
 using Newtonsoft.Json;
+using Polly;
+using Polly.Retry;
 
 namespace Eshopworld.Messaging
 {
@@ -23,9 +25,11 @@ namespace Eshopworld.Messaging
         internal Timer ReadTimer;
         internal int BatchSize;
 
-
         internal long LockInSeconds;
         internal long LockTickInSeconds;
+
+        protected AsyncRetryPolicy SendPolicy = Policy.Handle<Exception>().RetryAsync(1);
+        protected AsyncRetryPolicy ReceivePolicy = Policy.Handle<Exception>().RetryAsync(1);
 
         protected ServiceBusAdapter([NotNull]IObserver<T> messagesIn, int batchSize)
         {
@@ -67,7 +71,20 @@ namespace Eshopworld.Messaging
         {
             var m = RawMessages ? message as Message : Messages[message];
 
-            await Receiver.CompleteAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
+            await ReceivePolicy.ExecuteAsync(
+                async () =>
+                {
+                    try
+                    {
+                        await Receiver.CompleteAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        await RebuildReceiver().ConfigureAwait(false);
+                        throw;
+                    }
+                }).ConfigureAwait(false);
+
             Release(message);
         }
 
@@ -79,7 +96,20 @@ namespace Eshopworld.Messaging
         {
             var m = RawMessages ? message as Message : Messages[message];
 
-            await Receiver.AbandonAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
+            await ReceivePolicy.ExecuteAsync(
+                async () =>
+                {
+                    try
+                    {
+                        await Receiver.AbandonAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        await RebuildReceiver().ConfigureAwait(false);
+                        throw;
+                    }
+                }).ConfigureAwait(false);
+
             Release(message);
         }
 
@@ -91,7 +121,20 @@ namespace Eshopworld.Messaging
         {
             var m = RawMessages ? message as Message : Messages[message];
 
-            await Receiver.DeadLetterAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
+            await ReceivePolicy.ExecuteAsync(
+                async () =>
+                {
+                    try
+                    {
+                        await Receiver.DeadLetterAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        await RebuildReceiver().ConfigureAwait(false);
+                        throw;
+                    }
+                }).ConfigureAwait(false);
+
             Release(message);
         }
 
@@ -105,7 +148,19 @@ namespace Eshopworld.Messaging
         {
             var m = RawMessages ? message as Message : Messages[message];
 
-            await Receiver.RenewLockAsync(m).ConfigureAwait(false);
+            await ReceivePolicy.ExecuteAsync(
+                async () =>
+                {
+                    try
+                    {
+                        await Receiver.RenewLockAsync(m).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        await RebuildReceiver().ConfigureAwait(false);
+                        throw;
+                    }
+                }).ConfigureAwait(false);
 
             LockTimers.Add(
                 message,
@@ -123,8 +178,22 @@ namespace Eshopworld.Messaging
         internal async Task Read([CanBeNull]object _)
         {
             if (Receiver.IsClosedOrClosing) return;
+            IList<Message> messages = null;
 
-            var messages = await Receiver.ReceiveAsync(BatchSize).ConfigureAwait(false);
+            await ReceivePolicy.ExecuteAsync(
+                async () =>
+                {
+                    try
+                    {
+                        messages = await Receiver.ReceiveAsync(BatchSize).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        await RebuildReceiver().ConfigureAwait(false);
+                        throw;
+                    }
+                }).ConfigureAwait(false);
+
             if (messages == null) return;
 
             foreach (var message in messages)
@@ -161,14 +230,31 @@ namespace Eshopworld.Messaging
             Receiver.PrefetchCount = batchSize;
         }
 
+        /// <inheritdoc />
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
                 ReadTimer?.Dispose();
-                Receiver?.CloseAsync().Wait();
+                Receiver?.CloseAsync().ConfigureAwait(false).GetAwaiter().GetResult();
             }
         }
+
+        /// <summary>
+        /// Rebuild the receiver object used by the adapter implementation.
+        ///     Used with retry policies to improve reliability of the receiver:
+        ///     - On failure, rebuild and retry again right away
+        ///     - If the retry fails -> throw
+        /// </summary>
+        protected abstract Task RebuildReceiver();
+
+        /// <summary>
+        /// Rebuild the sender object used by the adapter implementation.
+        ///     Used with retry policies to improve reliability of the sender:
+        ///     - On failure, rebuild and retry again right away
+        ///     - If the retry fails -> throw
+        /// </summary>
+        protected abstract Task RebuildSender();
     }
 
     /// <summary>
@@ -188,6 +274,9 @@ namespace Eshopworld.Messaging
         protected abstract void Dispose(bool disposing);
     }
 
+    /// <summary>
+    /// Represents the type of transport used within Azure Service Bus.
+    /// </summary>
     internal enum MessagingTransport
     {
         Queue,

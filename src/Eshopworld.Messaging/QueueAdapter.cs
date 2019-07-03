@@ -17,9 +17,11 @@ namespace Eshopworld.Messaging
     internal sealed class QueueAdapter<T> : ServiceBusAdapter<T>
         where T : class
     {
+        internal readonly string ConnectionString;
         internal readonly Messenger Messenger;
         internal readonly IQueue AzureQueue;
-        internal readonly MessageSender Sender;
+
+        internal MessageSender Sender;
 
         /// <summary>
         /// Initializes a new instance of <see cref="QueueAdapter{T}"/>.
@@ -32,14 +34,16 @@ namespace Eshopworld.Messaging
         public QueueAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize, Messenger messenger)
             : base(messagesIn, batchSize)
         {
+            ConnectionString = connectionString;
             Messenger = messenger;
-            AzureQueue = Messenger.GetRefreshedServiceBusNamespace().CreateQueueIfNotExists(typeof(T).GetEntityName()).Result;
+            AzureQueue = Messenger.GetRefreshedServiceBusNamespace().ConfigureAwait(false).GetAwaiter().GetResult()
+                                  .CreateQueueIfNotExists(typeof(T).GetEntityName()).ConfigureAwait(false).GetAwaiter().GetResult();
 
             LockInSeconds = AzureQueue.LockDurationInSeconds;
-            LockTickInSeconds = (long)Math.Floor(LockInSeconds * 0.8); // renew at 80% to cope with load
+            LockTickInSeconds = (long) Math.Floor(LockInSeconds * 0.8); // renew at 80% to cope with load
 
-            Receiver = new MessageReceiver(connectionString, AzureQueue.Name, ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3), batchSize);
-            Sender = new MessageSender(connectionString, AzureQueue.Name, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
+            RebuildReceiver().ConfigureAwait(false).GetAwaiter().GetResult();
+            RebuildSender().ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -68,20 +72,55 @@ namespace Eshopworld.Messaging
                 Label = message.GetType().FullName
             };
 
-            await Sender.SendAsync(qMessage).ConfigureAwait(false);
+            await SendPolicy.ExecuteAsync(
+                async () =>
+                {
+                    try
+                    {
+                        await Sender.SendAsync(qMessage).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        await RebuildSender().ConfigureAwait(false);
+                        throw;
+                    }
+                }).ConfigureAwait(false);
         }
 
+        /// <inheritdoc />
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
-                Receiver.CloseAsync().Wait();
-                Sender.CloseAsync().Wait();
+                Receiver.CloseAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+                Sender.CloseAsync().ConfigureAwait(false).GetAwaiter().GetResult();
 
                 ReadTimer?.Dispose();
             }
 
             base.Dispose(disposing);
+        }
+
+        /// <inheritdoc />
+        protected override async Task RebuildReceiver()
+        {
+            if (Receiver != null && !Receiver.IsClosedOrClosing)
+            {
+                await Receiver.CloseAsync().ConfigureAwait(false);
+            }
+
+            Receiver = new MessageReceiver(ConnectionString, AzureQueue.Name, ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3), BatchSize);
+        }
+
+        /// <inheritdoc />
+        protected override async Task RebuildSender()
+        {
+            if (Sender != null && !Sender.IsClosedOrClosing)
+            {
+                await Sender.CloseAsync().ConfigureAwait(false);
+            }
+
+            Sender = new MessageSender(ConnectionString, AzureQueue.Name, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
         }
     }
 }

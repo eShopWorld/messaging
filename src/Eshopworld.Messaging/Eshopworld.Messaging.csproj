@@ -28,6 +28,7 @@
     <PackageReference Include="jetbrains.annotations" Version="2019.1.1" />
     <PackageReference Include="microsoft.azure.management.fluent" Version="1.22.2" />
     <PackageReference Include="microsoft.azure.servicebus" Version="3.4.0" />
+    <PackageReference Include="Microsoft.Azure.Services.AppAuthentication" Version="1.2.0" />
     <PackageReference Include="polly" Version="7.1.0" />
     <PackageReference Include="system.reactive" Version="4.1.5" />
   </ItemGroup>

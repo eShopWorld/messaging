@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
     <PackageReleaseNotes>Added retry once policies around all SB client operations that rebuild the client on failure.</PackageReleaseNotes>
 
     <TargetFramework>netstandard2.0</TargetFramework>
@@ -28,6 +28,7 @@
     <PackageReference Include="jetbrains.annotations" Version="2019.1.1" />
     <PackageReference Include="microsoft.azure.management.fluent" Version="1.22.2" />
     <PackageReference Include="microsoft.azure.servicebus" Version="3.4.0" />
+    <PackageReference Include="Microsoft.Azure.Services.AppAuthentication" Version="1.2.0" />
     <PackageReference Include="polly" Version="7.1.0" />
     <PackageReference Include="system.reactive" Version="4.1.5" />
   </ItemGroup>

@@ -26,7 +26,7 @@
   <ItemGroup>
     <PackageReference Include="eshopworld.core" Version="2.1.2" />
     <PackageReference Include="jetbrains.annotations" Version="2019.1.3" />
-    <PackageReference Include="microsoft.azure.management.fluent" Version="1.24.1" />
+    <PackageReference Include="Microsoft.Azure.Management.Fluent" Version="1.24.1" />
     <PackageReference Include="microsoft.azure.servicebus" Version="3.4.0" />
     <PackageReference Include="Microsoft.Azure.Services.AppAuthentication" Version="1.2.0" />
     <PackageReference Include="polly" Version="7.1.0" />

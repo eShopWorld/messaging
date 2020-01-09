@@ -8,6 +8,7 @@ using JetBrains.Annotations;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.ServiceBus.Core;
 using Newtonsoft.Json;
+using Nito.AsyncEx;
 using Polly;
 using Polly.Retry;
 
@@ -22,6 +23,8 @@ namespace Eshopworld.Messaging
         internal readonly bool RawMessages;
 
         internal MessageReceiver Receiver;
+        internal AsyncReaderWriterLock ReceiverLock = new AsyncReaderWriterLock();
+
         internal Timer ReadTimer;
         internal int BatchSize;
 
@@ -76,7 +79,10 @@ namespace Eshopworld.Messaging
                 {
                     try
                     {
-                        await Receiver.CompleteAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
+                        using (await ReceiverLock.ReaderLockAsync())
+                        {
+                            await Receiver.CompleteAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
+                        }
                     }
                     catch
                     {
@@ -101,7 +107,10 @@ namespace Eshopworld.Messaging
                 {
                     try
                     {
-                        await Receiver.AbandonAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
+                        using (await ReceiverLock.ReaderLockAsync())
+                        {
+                            await Receiver.AbandonAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
+                        }
                     }
                     catch
                     {
@@ -126,7 +135,10 @@ namespace Eshopworld.Messaging
                 {
                     try
                     {
-                        await Receiver.DeadLetterAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
+                        using (await ReceiverLock.ReaderLockAsync())
+                        {
+                            await Receiver.DeadLetterAsync(m?.SystemProperties.LockToken).ConfigureAwait(false);
+                        }
                     }
                     catch
                     {
@@ -153,7 +165,10 @@ namespace Eshopworld.Messaging
                 {
                     try
                     {
-                        await Receiver.RenewLockAsync(m).ConfigureAwait(false);
+                        using (await ReceiverLock.ReaderLockAsync())
+                        {
+                            await Receiver.RenewLockAsync(m).ConfigureAwait(false);
+                        }
                     }
                     catch
                     {
@@ -165,7 +180,12 @@ namespace Eshopworld.Messaging
             LockTimers.Add(
                 message,
                 new Timer(
-                    async _ => { await Receiver.RenewLockAsync(Messages[message]).ConfigureAwait(false); },
+                    async _ => {
+                        using (await ReceiverLock.ReaderLockAsync())
+                        {
+                            await Receiver.RenewLockAsync(Messages[message]).ConfigureAwait(false);
+                        }
+                    },
                     null,
                     TimeSpan.FromSeconds(LockTickInSeconds),
                     TimeSpan.FromSeconds(LockTickInSeconds)));
@@ -185,7 +205,10 @@ namespace Eshopworld.Messaging
                 {
                     try
                     {
-                        messages = await Receiver.ReceiveAsync(BatchSize).ConfigureAwait(false);
+                        using (await ReceiverLock.ReaderLockAsync())
+                        {
+                            messages = await Receiver.ReceiveAsync(BatchSize).ConfigureAwait(false);
+                        }
                     }
                     catch
                     {

@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     
-    <Version>1.2.0</Version>
-    <PackageReleaseNotes>Nuget Updates</PackageReleaseNotes>
+    <Version>1.2.1</Version>
+    <PackageReleaseNotes>race conditions fixes</PackageReleaseNotes>
 
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
@@ -29,6 +29,7 @@
     <PackageReference Include="Microsoft.Azure.Management.Fluent" Version="1.24.1" />
     <PackageReference Include="microsoft.azure.servicebus" Version="3.4.0" />
     <PackageReference Include="Microsoft.Azure.Services.AppAuthentication" Version="1.2.0" />
+    <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.0.0" />
     <PackageReference Include="polly" Version="7.1.0" />
     <PackageReference Include="system.reactive" Version="4.1.6" />
   </ItemGroup>

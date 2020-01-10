@@ -2,8 +2,9 @@
 
   <PropertyGroup>
     
-    <Version>1.2.1</Version>
-    <PackageReleaseNotes>race conditions fixes</PackageReleaseNotes>
+    <Version>1.2.1-preview</Version>
+    <PackageReleaseNotes>race conditions fixes
+this is a preview version which has not yet been performance assesed</PackageReleaseNotes>
 
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>

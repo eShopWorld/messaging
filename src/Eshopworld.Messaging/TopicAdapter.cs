@@ -104,6 +104,15 @@ I suggest you reduce the size of the namespace: '{TopicType.Namespace}'.");
                             await Sender.SendAsync(qMessage).ConfigureAwait(false);
                         }
                     }
+                    /**
+                     * we want to minimize the client rebuild frequency and ideally the reverse the approach
+                     * rebuild only when there is valid reason to do so
+                     * this list will need to be compiled/maintained
+                     */
+                    catch (QuotaExceededException) //let the polly deal with this - retry if allowed
+                    {
+                        throw;
+                    }
                     catch
                     {
                         await RebuildSender().ConfigureAwait(false);

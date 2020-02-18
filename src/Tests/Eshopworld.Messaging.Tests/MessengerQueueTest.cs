@@ -111,8 +111,8 @@ public class MessengerQueueTest
         }
     }
 
-    [Fact(Skip = "Temporarily disabling while troubleshooting test issues"), IsLayer1]
-    public async Task Test_LockMessage_ForFiveMinutes()
+    [Fact, IsLayer1]
+    public async Task Test_LockMessage_ForTwoMinutes()
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
 
@@ -128,7 +128,7 @@ public class MessengerQueueTest
                     await msn.Lock(m);
                 });
 
-            await Task.Delay(TimeSpan.FromMinutes(5));
+            await Task.Delay(TimeSpan.FromMinutes(2));
 
             message.Should().NotBeNull();
             await msn.Complete(message); // If this throws, Lock failed

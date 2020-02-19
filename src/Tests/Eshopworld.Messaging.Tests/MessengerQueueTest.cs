@@ -111,7 +111,7 @@ public class MessengerQueueTest
         }
     }
 
-    [Fact(Skip = "delay is annoying"), IsLayer1]
+    [Fact, IsLayer1]
     public async Task Test_LockMessage_ForTwoMinutes()
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();

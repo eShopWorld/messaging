@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Eshopworld.Core;
 using Microsoft.Azure.Management.ServiceBus.Fluent;
 
 namespace Eshopworld.Messaging
@@ -104,7 +106,8 @@ namespace Eshopworld.Messaging
         public static string GetEntityName(this Type type)
         {
 #if DEBUG
-            var queueName = type.FullName;
+            var queueName = GetQueueNameForType(type);
+
             if (Debugger.IsAttached)
             {
                 queueName += $"-{Environment.UserName.Replace("$", "")}";
@@ -112,8 +115,14 @@ namespace Eshopworld.Messaging
 
             return queueName?.ToLower();
 #else
-            return type.FullName?.ToLower();
+            return GetQueueNameForType(type)?.ToLower();
 #endif
+        }
+
+        private static string GetQueueNameForType(Type type)
+        {
+            var attributeEventName = type.GetCustomAttribute<EswEventNameAttribute>()?.EventName;
+            return string.IsNullOrWhiteSpace(attributeEventName) ? type.FullName : attributeEventName;
         }
     }
 }

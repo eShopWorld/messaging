@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     
-    <Version>2.0.1</Version>
-    <PackageReleaseNotes>Updated to netstandard 2.1</PackageReleaseNotes>
+    <Version>2.1.0</Version>
+    <PackageReleaseNotes>Added ability to override event names using EswEventName attribute</PackageReleaseNotes>
 
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>

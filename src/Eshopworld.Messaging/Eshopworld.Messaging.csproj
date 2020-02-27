@@ -3,7 +3,7 @@
   <PropertyGroup>
     
     <Version>2.1.1-preview</Version>
-    <PackageReleaseNotes>Added ability to override event names using EswEventName attribute</PackageReleaseNotes>
+    <PackageReleaseNotes>added synchronisation for connection resets to prevent exceptions</PackageReleaseNotes>
 
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>
@@ -12,7 +12,7 @@
     
     <IsPackable>True</IsPackable>
     <PackageId>Eshopworld.Messaging</PackageId>
-    <Authors>David Rodrigues, David Guerin</Authors>
+    <Authors>David Rodrigues, David Guerin, Oisin Haken, Stephen Poland</Authors>
     <Company>eShopWorld</Company>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/eShopWorld/messaging</PackageProjectUrl>

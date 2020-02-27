@@ -60,7 +60,6 @@ public class MessengerTopicTest
             {
                 global = Task.WhenAll(tasks);
                 await global;
-                Assert.True(!global.IsFaulted);
             }
             catch (Exception)
             {

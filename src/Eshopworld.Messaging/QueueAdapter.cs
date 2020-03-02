@@ -23,7 +23,7 @@ namespace Eshopworld.Messaging
         internal readonly IQueue AzureQueue;
 
         internal MessageSender Sender;
-        internal AsyncReaderWriterLock SenderLock = new AsyncReaderWriterLock();
+        internal readonly AsyncReaderWriterLock SenderLock = new AsyncReaderWriterLock();
 
         /// <summary>
         /// Initializes a new instance of <see cref="QueueAdapter{T}"/>.

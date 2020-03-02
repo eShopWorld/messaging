@@ -25,7 +25,7 @@ namespace Eshopworld.Messaging
         internal TopicClient Sender;
         internal ISubscription AzureTopicSubscription;
         internal string SubscriptionName;
-        internal AsyncReaderWriterLock senderLock = new AsyncReaderWriterLock();
+        internal readonly AsyncReaderWriterLock SenderLock = new AsyncReaderWriterLock();
 
         /// <summary>
         /// Initializes a new instance of <see cref="TopicAdapter{T}"/>.
@@ -99,13 +99,13 @@ I suggest you reduce the size of the namespace: '{TopicType.Namespace}'.");
                 {
                     try
                     {
-                        using (await senderLock.ReaderLockAsync())
+                        using (await SenderLock.ReaderLockAsync())
                         {
                             await Sender.SendAsync(qMessage).ConfigureAwait(false);
                         }
                     }
                     /**
-                     * we want to minimize the client rebuild frequency and ideally the reverse the approach
+                     * we want to minimize the client rebuild frequency and ideally to reverse the approach
                      * rebuild only when there is valid reason to do so
                      * this list will need to be compiled/maintained
                      */
@@ -159,7 +159,7 @@ I suggest you reduce the size of the namespace: '{TopicType.Namespace}'.");
         /// <inheritdoc />
         protected override async Task RebuildSender()
         {
-            using (await senderLock.WriterLockAsync())
+            using (await SenderLock.WriterLockAsync())
             {
                 if (Sender != null && !Sender.IsClosedOrClosing)
                 {

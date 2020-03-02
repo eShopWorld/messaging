@@ -37,6 +37,40 @@ public class MessengerTopicTest
     }
 
     [Fact, IsLayer1]
+    public async Task Test_SendFailureCorrectRebuildSequence()
+    {
+        await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
+
+        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
+        {
+            await msn.Publish(new TestMessage());
+            ServiceBusFixture.ServiceBusNamespace.AssertSingleTopicExists(typeof(TestMessage));
+        }
+
+        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ListenOnlyServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
+        {
+            var tasks = new List<Task>();
+            for (int x=0; x<100; x++)
+            {
+                tasks.Add(Task.Run(()=> msn.Publish(new TestMessage())));
+            }
+
+            Task global=null; 
+            try
+            {
+                global = Task.WhenAll(tasks);
+                await global;
+            }
+            catch (Exception)
+            {
+                Assert.All(global.Exception.InnerExceptions, (t) => Assert.True(t is UnauthorizedException));
+            }
+
+        }
+
+    }
+
+    [Fact, IsLayer1]
     public async Task Test_ReceiveCreatesTheTopic()
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();

@@ -7,6 +7,7 @@ using Microsoft.Azure.Management.ServiceBus.Fluent;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.ServiceBus.Core;
 using Newtonsoft.Json;
+using Nito.AsyncEx;
 
 namespace Eshopworld.Messaging
 {
@@ -22,6 +23,7 @@ namespace Eshopworld.Messaging
         internal readonly IQueue AzureQueue;
 
         internal MessageSender Sender;
+        internal readonly AsyncReaderWriterLock SenderLock = new AsyncReaderWriterLock();
 
         /// <summary>
         /// Initializes a new instance of <see cref="QueueAdapter{T}"/>.
@@ -77,7 +79,10 @@ namespace Eshopworld.Messaging
                 {
                     try
                     {
-                        await Sender.SendAsync(qMessage).ConfigureAwait(false);
+                        using (await SenderLock.ReaderLockAsync())
+                        {
+                            await Sender.SendAsync(qMessage).ConfigureAwait(false);
+                        }
                     }
                     catch
                     {
@@ -104,23 +109,29 @@ namespace Eshopworld.Messaging
         /// <inheritdoc />
         protected override async Task RebuildReceiver()
         {
-            if (Receiver != null && !Receiver.IsClosedOrClosing)
+            using (await ReceiverLock.WriterLockAsync())
             {
-                await Receiver.CloseAsync().ConfigureAwait(false);
-            }
+                if (Receiver != null && !Receiver.IsClosedOrClosing)
+                {
+                    await Receiver.CloseAsync().ConfigureAwait(false);
+                }
 
-            Receiver = new MessageReceiver(ConnectionString, AzureQueue.Name, ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3), BatchSize);
+                Receiver = new MessageReceiver(ConnectionString, AzureQueue.Name, ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3), BatchSize);
+            }
         }
 
         /// <inheritdoc />
         protected override async Task RebuildSender()
         {
-            if (Sender != null && !Sender.IsClosedOrClosing)
+            using (await SenderLock.WriterLockAsync())
             {
-                await Sender.CloseAsync().ConfigureAwait(false);
-            }
+                if (Sender != null && !Sender.IsClosedOrClosing)
+                {
+                    await Sender.CloseAsync().ConfigureAwait(false);
+                }
 
-            Sender = new MessageSender(ConnectionString, AzureQueue.Name, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
+                Sender = new MessageSender(ConnectionString, AzureQueue.Name, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
+            }
         }
     }
 }

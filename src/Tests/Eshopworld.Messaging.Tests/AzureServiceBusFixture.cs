@@ -82,6 +82,8 @@ namespace Eshopworld.Messaging.Tests
     {
         public string ServiceBusConnectionString { get; set; }
 
+        public string ListenOnlyServiceBusConnectionString { get; set; }
+
         public string AzureSubscriptionId { get; set; }
     }
 }

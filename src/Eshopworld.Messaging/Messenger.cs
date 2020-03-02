@@ -215,6 +215,7 @@ namespace Eshopworld.Messaging
                 if (!ServiceBusAdapters.TryAdd(typeof(T), adapter))
                 {
                     adapter.Dispose();
+                    adapter = null;
                 }
             }
 

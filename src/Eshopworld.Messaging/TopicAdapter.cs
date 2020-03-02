@@ -7,6 +7,7 @@ using Microsoft.Azure.Management.ServiceBus.Fluent;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.ServiceBus.Core;
 using Newtonsoft.Json;
+using Nito.AsyncEx;
 
 namespace Eshopworld.Messaging
 {
@@ -24,6 +25,7 @@ namespace Eshopworld.Messaging
         internal TopicClient Sender;
         internal ISubscription AzureTopicSubscription;
         internal string SubscriptionName;
+        internal readonly AsyncReaderWriterLock SenderLock = new AsyncReaderWriterLock();
 
         /// <summary>
         /// Initializes a new instance of <see cref="TopicAdapter{T}"/>.
@@ -50,7 +52,7 @@ I suggest you reduce the size of the namespace: '{TopicType.Namespace}'.");
 
             AzureTopic = Messenger.GetRefreshedServiceBusNamespace().ConfigureAwait(false).GetAwaiter().GetResult()
                                   .CreateTopicIfNotExists(TopicType.GetEntityName()).ConfigureAwait(false).GetAwaiter().GetResult();
-
+      
             RebuildSender().ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
@@ -97,7 +99,19 @@ I suggest you reduce the size of the namespace: '{TopicType.Namespace}'.");
                 {
                     try
                     {
-                        await Sender.SendAsync(qMessage).ConfigureAwait(false);
+                        using (await SenderLock.ReaderLockAsync())
+                        {
+                            await Sender.SendAsync(qMessage).ConfigureAwait(false);
+                        }
+                    }
+                    /**
+                     * we want to minimize the client rebuild frequency and ideally to reverse the approach
+                     * rebuild only when there is valid reason to do so
+                     * this list will need to be compiled/maintained
+                     */
+                    catch (QuotaExceededException) //let the polly deal with this - retry if allowed
+                    {
+                        throw;
                     }
                     catch
                     {
@@ -131,23 +145,29 @@ I suggest you reduce the size of the namespace: '{TopicType.Namespace}'.");
         /// <inheritdoc />
         protected override async Task RebuildReceiver()
         {
-            if (Receiver != null && !Receiver.IsClosedOrClosing)
+            using (await ReceiverLock.WriterLockAsync())
             {
-                await Receiver.CloseAsync().ConfigureAwait(false);
-            }
+                if (Receiver != null && !Receiver.IsClosedOrClosing)
+                {
+                    await Receiver.CloseAsync().ConfigureAwait(false);
+                }
 
-            Receiver = new MessageReceiver(ConnectionString, EntityNameHelper.FormatSubscriptionPath(AzureTopic.Name, SubscriptionName), ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3), BatchSize);
+                Receiver = new MessageReceiver(ConnectionString, EntityNameHelper.FormatSubscriptionPath(AzureTopic.Name, SubscriptionName), ReceiveMode.PeekLock, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3), BatchSize);
+            }
         }
 
         /// <inheritdoc />
         protected override async Task RebuildSender()
         {
-            if (Sender != null && !Sender.IsClosedOrClosing)
+            using (await SenderLock.WriterLockAsync())
             {
-                await Sender.CloseAsync().ConfigureAwait(false);
-            }
+                if (Sender != null && !Sender.IsClosedOrClosing)
+                {
+                    await Sender.CloseAsync().ConfigureAwait(false);
+                }
 
-            Sender = new TopicClient(ConnectionString, AzureTopic.Name, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
+                Sender = new TopicClient(ConnectionString, AzureTopic.Name, new RetryExponential(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(500), 3));
+            }
         }
 
         /// <inheritdoc />

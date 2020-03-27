@@ -43,10 +43,10 @@ namespace Eshopworld.Messaging
 
             TopicType = typeof(T);
 
-            if (TopicType.FullName?.Length > 260) // SB quota: Entity path max length
+            if (TopicType.GetEntityName()?.Length > 260) // SB quota: Entity path max length
             {
                 throw new InvalidOperationException(
-                    $@"You can't create queues for the type {TopicType.FullName} because the full name (namespace + name) exceeds 260 characters.
+                    $@"You can't create queues for the type {TopicType.GetEntityName()} because the full name (namespace + name) exceeds 260 characters.
 I suggest you reduce the size of the namespace: '{TopicType.Namespace}'.");
             }
 
@@ -91,7 +91,7 @@ I suggest you reduce the size of the namespace: '{TopicType.Namespace}'.");
             var qMessage = new Message(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(message)))
             {
                 ContentType = "application/json",
-                Label = message.GetType().FullName
+                Label = message.GetType().GetEntityName()
             };
 
             await SendPolicy.ExecuteAsync(

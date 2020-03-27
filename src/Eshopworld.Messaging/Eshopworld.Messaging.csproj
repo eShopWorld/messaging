@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     
-    <Version>2.1.1</Version>
-    <PackageReleaseNotes>added synchronisation for connection resets to prevent exceptions</PackageReleaseNotes>
+    <Version>2.1.2</Version>
+    <PackageReleaseNotes>Fix the use of EswEventNameAttribute.</PackageReleaseNotes>
 
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>
@@ -12,17 +12,22 @@
     
     <IsPackable>True</IsPackable>
     <PackageId>Eshopworld.Messaging</PackageId>
-    <Authors>David Rodrigues, David Guerin, Oisin Haken, Stephen Poland</Authors>
+    <PackageIcon>icon.png</PackageIcon>
+    <Authors>David Rodrigues, David Guerin, Oisin Haken, Stephen Poland, Antonino Parisi</Authors>
     <Company>eShopWorld</Company>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/eShopWorld/messaging</PackageProjectUrl>
     <Description>eShopWorld messaging package</Description>
     <Product>Eshopworld.Messaging</Product>
-    <Copyright>Copyright 2019</Copyright>
+    <Copyright>Copyright 2020</Copyright>
     <PackageTags>Eshopworld, Messaging, ServiceBus, Azure</PackageTags>
 
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Include="icon.png" Pack="true" PackagePath=""/>
+  </ItemGroup>
+  
   <ItemGroup>
     <PackageReference Include="eshopworld.core" Version="4.0.0" />
     <PackageReference Include="jetbrains.annotations" Version="2019.1.3" />

@@ -71,7 +71,7 @@ namespace Eshopworld.Messaging
             var qMessage = new Message(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(message)))
             {
                 ContentType = "application/json",
-                Label = message.GetType().FullName
+                Label = message.GetType().GetEntityName()
             };
 
             await SendPolicy.ExecuteAsync(

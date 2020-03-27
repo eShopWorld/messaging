@@ -83,6 +83,29 @@ public class MessengerTopicTest
         }
     }
 
+    [EswEventName("test.prova.nino")]
+    class TestNinoEvent : DomainEvent
+    {
+
+    }
+
+    [Theory, IsLayer1]
+    [InlineData(typeof(TestEventWithoutAttribute))]
+    [InlineData(typeof(TestEventWithAttribute))]
+    [InlineData(typeof(TestEventWithEmptyAttributeValue))]
+    [InlineData(typeof(TestEvenWithWhiteSpaceAttributeValue))]
+    public async Task Test_SendingNamedEvents(Type type)
+    {
+        await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
+
+        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
+        {
+            dynamic message = Activator.CreateInstance(type);
+            await msn.Publish(message);
+            ServiceBusFixture.ServiceBusNamespace.AssertSingleTopicExists(type);
+        }
+    }
+
     [Fact, IsLayer1]
     public async Task Test_SendingRandomEvents()
     {

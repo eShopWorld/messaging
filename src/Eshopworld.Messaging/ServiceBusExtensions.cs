@@ -100,7 +100,7 @@ namespace Eshopworld.Messaging
         {
             try
             {
-                return await sbNamespace.Topics.GetByNameAsync(name);
+                return await sbNamespace.Topics.GetByNameAsync(name.ToLowerInvariant());
             }
             catch (Microsoft.Rest.Azure.CloudException ex)
                 when (ex.Response.StatusCode == HttpStatusCode.NotFound)
@@ -121,7 +121,7 @@ namespace Eshopworld.Messaging
         {
             try
             {
-                return await sbNamespace.Queues.GetByNameAsync(name);
+                return await sbNamespace.Queues.GetByNameAsync(name.ToLowerInvariant());
             }
             catch (Microsoft.Rest.Azure.CloudException ex)
                 when (ex.Response.StatusCode == HttpStatusCode.NotFound)
@@ -142,7 +142,7 @@ namespace Eshopworld.Messaging
         {
             try
             {
-                return await topic.Subscriptions.GetByNameAsync(name);
+                return await topic.Subscriptions.GetByNameAsync(name.ToLowerInvariant());
             }
             catch (Microsoft.Rest.Azure.CloudException ex)
                 when (ex.Response.StatusCode == HttpStatusCode.NotFound)

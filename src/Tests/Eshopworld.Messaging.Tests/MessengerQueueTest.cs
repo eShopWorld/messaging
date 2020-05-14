@@ -235,4 +235,24 @@ public class MessengerQueueTest
             ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage)]).LockTimers.Should().BeEmpty();
         }
     }
+
+    /// <summary>Verify the GetQueueByName extension returns IQueue when exists and null when it does not.</summary>
+    [Fact, IsLayer1]
+    public async Task Test_GetQueueByName()
+    {
+        // Arrange
+        await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
+        var queueName = nameof(Test_GetQueueByName).Replace("_", "");
+
+        // Act
+        var queueBefore = await ServiceBusFixture.ServiceBusNamespace.GetTopicByName(queueName);
+        await ServiceBusFixture.ServiceBusNamespace.CreateTopicIfNotExists(queueName);
+        var queueAfter = await ServiceBusFixture.ServiceBusNamespace.GetTopicByName(queueName);
+
+        // Assert
+        queueBefore.Should().BeNull();
+        queueAfter.Should().NotBeNull();
+        queueAfter.Name.Should().Be(queueName);
+    }
+
 }

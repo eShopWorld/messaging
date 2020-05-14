@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Linq;
+using System.Net;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -22,10 +22,10 @@ namespace Eshopworld.Messaging
         /// <returns>The <see cref="IQueue"/> entity object that references the Azure queue.</returns>
         public static async Task<IQueue> CreateQueueIfNotExists(this IServiceBusNamespace sbNamespace, string name)
         {
-            var queue = (await sbNamespace.Queues.ListAsync()).SingleOrDefault(q => q.Name == name.ToLower());
+            var queue = await sbNamespace.GetQueueByName(name); 
             if (queue != null) return queue;
 
-            await sbNamespace.Queues
+            queue = await sbNamespace.Queues
                              .Define(name.ToLower())
                              .WithMessageLockDurationInSeconds(60)
                              .WithDuplicateMessageDetection(TimeSpan.FromMinutes(10))
@@ -34,7 +34,7 @@ namespace Eshopworld.Messaging
                              .CreateAsync();
 
             await sbNamespace.RefreshAsync();
-            return (await sbNamespace.Queues.ListAsync()).Single(q => q.Name == name.ToLower());
+            return queue;
         }
 
         /// <summary>
@@ -45,16 +45,16 @@ namespace Eshopworld.Messaging
         /// <returns>The <see cref="ITopic"/> entity object that references the Azure topic.</returns>
         public static async Task<ITopic> CreateTopicIfNotExists(this IServiceBusNamespace sbNamespace, string name)
         {
-            var topic = (await sbNamespace.Topics.ListAsync()).SingleOrDefault(t => t.Name == name.ToLower());
+            var topic = await sbNamespace.GetTopicByName(name);
             if (topic != null) return topic;
 
-            await sbNamespace.Topics
+            topic = await sbNamespace.Topics
                              .Define(name.ToLower())
                              .WithDuplicateMessageDetection(TimeSpan.FromMinutes(10))
                              .CreateAsync();
 
             await sbNamespace.RefreshAsync();
-            return (await sbNamespace.Topics.ListAsync()).Single(t => t.Name == name.ToLower());
+            return topic;
         }
 
         /// <summary>
@@ -65,10 +65,10 @@ namespace Eshopworld.Messaging
         /// <returns>The <see cref="ISubscription"/> entity object that references the subscription.</returns>
         public static async Task<ISubscription> CreateSubscriptionIfNotExists(this ITopic topic, string name)
         {
-            var subscription = (await topic.Subscriptions.ListAsync()).SingleOrDefault(s => s.Name == name.ToLower());
+            var subscription = await topic.GetSubscriptionByName(name);
             if (subscription != null) return subscription;
 
-            await topic.Subscriptions
+            subscription = await topic.Subscriptions
                        .Define(name.ToLower())
                        .WithMessageLockDurationInSeconds(60)
                        .WithExpiredMessageMovedToDeadLetterSubscription()
@@ -76,7 +76,7 @@ namespace Eshopworld.Messaging
                        .CreateAsync();
 
             await topic.RefreshAsync();
-            return (await topic.Subscriptions.ListAsync()).Single(t => t.Name == name.ToLower());
+            return subscription;
         }
 
         /// <summary>
@@ -87,6 +87,69 @@ namespace Eshopworld.Messaging
         public static string GetNamespaceNameFromConnectionString(this string connectionString)
         {
             return Regex.Match(connectionString, @"Endpoint=sb:\/\/([^.]*)", RegexOptions.IgnoreCase).Groups[1].Value;
+        }
+
+        /// <summary>
+        /// Gets a topic by name, will return null if not found.
+        /// More efficient than enumerating all topics and find by name.
+        /// </summary>
+        /// <param name="sbNamespace">The sb namespace to extend.</param>
+        /// <param name="name">The name of the topic to find.</param>
+        /// <returns>The <see cref="ITopic"/> if exists and null if not.</returns>
+        public static async Task<ITopic> GetTopicByName(this IServiceBusNamespace sbNamespace, string name)
+        {
+            try
+            {
+                return await sbNamespace.Topics.GetByNameAsync(name);
+            }
+            catch (Microsoft.Rest.Azure.CloudException ex)
+                when (ex.Response.StatusCode == HttpStatusCode.NotFound)
+            {
+                // Not found.
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Gets a queue by name, will return null if not found.
+        /// More efficient than enumerating all queues and finding by name.
+        /// </summary>
+        /// <param name="sbNamespace">The sb namespace to extend.</param>
+        /// <param name="name">The name of the topic to find.</param>
+        /// <returns>The <see cref="ITopic"/> if exists and null if not.</returns>
+        public static async Task<IQueue> GetQueueByName(this IServiceBusNamespace sbNamespace, string name)
+        {
+            try
+            {
+                return await sbNamespace.Queues.GetByNameAsync(name);
+            }
+            catch (Microsoft.Rest.Azure.CloudException ex)
+                when (ex.Response.StatusCode == HttpStatusCode.NotFound)
+            {
+                // Not found.
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Gets a topic subscription by name, will return null if not found.
+        /// More efficient than enumerating all subscriptions and finding by name.
+        /// </summary>
+        /// <param name="topic">The topic to extend.</param>
+        /// <param name="name">The name of the subscription to find.</param>
+        /// <returns>The <see cref="ITopic"/> if exists and null if not.</returns>
+        public static async Task<ISubscription> GetSubscriptionByName(this ITopic topic, string name)
+        {
+            try
+            {
+                return await topic.Subscriptions.GetByNameAsync(name);
+            }
+            catch (Microsoft.Rest.Azure.CloudException ex)
+                when (ex.Response.StatusCode == HttpStatusCode.NotFound)
+            {
+                // Not found.
+                return null;
+            }
         }
     }
 

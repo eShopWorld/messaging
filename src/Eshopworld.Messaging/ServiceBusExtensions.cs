@@ -33,7 +33,6 @@ namespace Eshopworld.Messaging
                              .WithMessageMovedToDeadLetterQueueOnMaxDeliveryCount(10)
                              .CreateAsync();
 
-            await sbNamespace.RefreshAsync();
             return queue;
         }
 
@@ -53,7 +52,6 @@ namespace Eshopworld.Messaging
                              .WithDuplicateMessageDetection(TimeSpan.FromMinutes(10))
                              .CreateAsync();
 
-            await sbNamespace.RefreshAsync();
             return topic;
         }
 
@@ -75,7 +73,6 @@ namespace Eshopworld.Messaging
                        .WithMessageMovedToDeadLetterSubscriptionOnMaxDeliveryCount(10)
                        .CreateAsync();
 
-            await topic.RefreshAsync();
             return subscription;
         }
 

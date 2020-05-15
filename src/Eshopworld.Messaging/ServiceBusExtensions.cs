@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Eshopworld.Core;
 using Microsoft.Azure.Management.ServiceBus.Fluent;
+using Microsoft.Rest.Azure;
 
 namespace Eshopworld.Messaging
 {
@@ -24,16 +25,24 @@ namespace Eshopworld.Messaging
         {
             var queue = await sbNamespace.GetQueueByName(name); 
             if (queue != null) return queue;
-
-            queue = await sbNamespace.Queues
-                             .Define(name.ToLower())
+            
+            try
+            {
+                return await sbNamespace.Queues
+                             .Define(name.ToLowerInvariant())
                              .WithMessageLockDurationInSeconds(60)
                              .WithDuplicateMessageDetection(TimeSpan.FromMinutes(10))
                              .WithExpiredMessageMovedToDeadLetterQueue()
                              .WithMessageMovedToDeadLetterQueueOnMaxDeliveryCount(10)
                              .CreateAsync();
-
-            return queue;
+            }
+            catch (CloudException ce)
+                when (ce.Response.StatusCode == HttpStatusCode.BadRequest &&
+                      ce.Message.Contains("SubCode=40000. The value for the requires duplicate detection property of an existing Queue cannot be changed"))
+            {
+                // Create queue race condition occurred. Return existing queue.
+                return await sbNamespace.GetQueueByName(name);
+            }
         }
 
         /// <summary>
@@ -47,12 +56,20 @@ namespace Eshopworld.Messaging
             var topic = await sbNamespace.GetTopicByName(name);
             if (topic != null) return topic;
 
-            topic = await sbNamespace.Topics
-                             .Define(name.ToLower())
+            try
+            {
+                return await sbNamespace.Topics
+                             .Define(name.ToLowerInvariant())
                              .WithDuplicateMessageDetection(TimeSpan.FromMinutes(10))
                              .CreateAsync();
-
-            return topic;
+            }
+            catch (CloudException ce)
+                when (ce.Response.StatusCode == HttpStatusCode.BadRequest && 
+                      ce.Message.Contains("SubCode=40000. The value for the requires duplicate detection property of an existing Topic cannot be changed"))
+            {
+                // Create topic race condition occurred. Return existing topic.
+                return await sbNamespace.GetTopicByName(name);
+            }
         }
 
         /// <summary>
@@ -66,14 +83,16 @@ namespace Eshopworld.Messaging
             var subscription = await topic.GetSubscriptionByName(name);
             if (subscription != null) return subscription;
 
-            subscription = await topic.Subscriptions
-                       .Define(name.ToLower())
-                       .WithMessageLockDurationInSeconds(60)
-                       .WithExpiredMessageMovedToDeadLetterSubscription()
-                       .WithMessageMovedToDeadLetterSubscriptionOnMaxDeliveryCount(10)
-                       .CreateAsync();
+            return await topic.Subscriptions
+                   .Define(name.ToLowerInvariant())
+                   .WithMessageLockDurationInSeconds(60)
+                   .WithExpiredMessageMovedToDeadLetterSubscription()
+                   .WithMessageMovedToDeadLetterSubscriptionOnMaxDeliveryCount(10)
+                   .CreateAsync();
 
-            return subscription;
+            // No error handling is required for race conditions creating topic subscriptions - when the create is called, if
+            // already exists, the existing subscription is returned with the create call.  Different behaviour from the creation
+            // of topics or queues.
         }
 
         /// <summary>

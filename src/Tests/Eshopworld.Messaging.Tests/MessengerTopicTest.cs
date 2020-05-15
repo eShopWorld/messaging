@@ -194,7 +194,7 @@ public class MessengerTopicTest
         // Assert
         topicBefore.Should().BeNull();
         topicAfter.Should().NotBeNull();
-        topicAfter.Name.Should().Be(topicName);
+        topicAfter.Name.Should().Be(topicAfter.Name.ToLowerInvariant());
     }
 
     /// <summary>Verify the GetTopicSubscriptionByName extension returns ISubscription when exists and null when it does not.</summary>
@@ -204,7 +204,7 @@ public class MessengerTopicTest
         // Arrange
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
         var topicName = nameof(Test_GetTopicSubscriptionByName).Replace("_", "");
-        var subscriptionName = "sub1";
+        var subscriptionName = "Sub1";
 
         // Act
         var topic = await ServiceBusFixture.ServiceBusNamespace.CreateTopicIfNotExists(topicName);
@@ -215,7 +215,7 @@ public class MessengerTopicTest
         // Assert
         subscriptionBefore.Should().BeNull();
         subscriptionAfter.Should().NotBeNull();
-        subscriptionAfter.Name.Should().Be(subscriptionName);
+        subscriptionAfter.Name.Should().Be(subscriptionName.ToLowerInvariant());
     }
 
 }

@@ -246,13 +246,13 @@ public class MessengerQueueTest
 
         // Act
         var queueBefore = await ServiceBusFixture.ServiceBusNamespace.GetTopicByName(queueName);
-        await ServiceBusFixture.ServiceBusNamespace.CreateTopicIfNotExists(queueName);
+        await ServiceBusFixture.ServiceBusNamespace.CreateQueueIfNotExists(queueName);
         var queueAfter = await ServiceBusFixture.ServiceBusNamespace.GetTopicByName(queueName);
 
         // Assert
         queueBefore.Should().BeNull();
         queueAfter.Should().NotBeNull();
-        queueAfter.Name.Should().Be(queueName);
+        queueAfter.Name.Should().Be(queueName.ToLowerInvariant());
     }
 
 }

@@ -178,7 +178,7 @@ public class MessengerTopicTest
     }
 
 
-    /// <summary>Verify the GetTopicByName extension returns ITopic when exists and null when it does not.</summary>
+    /// <summary>Verify the GetTopicByNameAsync extension returns ITopic when exists and null when it does not.</summary>
     [Fact, IsLayer1]
     public async Task Test_GetTopicByName()
     {
@@ -187,9 +187,9 @@ public class MessengerTopicTest
         var topicName = nameof(Test_GetTopicByName).Replace("_", "");
 
         // Act
-        var topicBefore = await ServiceBusFixture.ServiceBusNamespace.GetTopicByName(topicName);
+        var topicBefore = await ServiceBusFixture.ServiceBusNamespace.GetTopicByNameAsync(topicName);
         await ServiceBusFixture.ServiceBusNamespace.CreateTopicIfNotExists(topicName);
-        var topicAfter = await ServiceBusFixture.ServiceBusNamespace.GetTopicByName(topicName);
+        var topicAfter = await ServiceBusFixture.ServiceBusNamespace.GetTopicByNameAsync(topicName);
 
         // Assert
         topicBefore.Should().BeNull();
@@ -208,9 +208,9 @@ public class MessengerTopicTest
 
         // Act
         var topic = await ServiceBusFixture.ServiceBusNamespace.CreateTopicIfNotExists(topicName);
-        var subscriptionBefore = await topic.GetSubscriptionByName(subscriptionName);
+        var subscriptionBefore = await topic.GetSubscriptionByNameAsync(subscriptionName);
         await topic.CreateSubscriptionIfNotExists(subscriptionName);
-        var subscriptionAfter = await topic.GetSubscriptionByName(subscriptionName);
+        var subscriptionAfter = await topic.GetSubscriptionByNameAsync(subscriptionName);
 
         // Assert
         subscriptionBefore.Should().BeNull();

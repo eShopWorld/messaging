@@ -236,7 +236,7 @@ public class MessengerQueueTest
         }
     }
 
-    /// <summary>Verify the GetQueueByName extension returns IQueue when exists and null when it does not.</summary>
+    /// <summary>Verify the GetQueueByNameAsync extension returns IQueue when exists and null when it does not.</summary>
     [Fact, IsLayer1]
     public async Task Test_GetQueueByName()
     {
@@ -245,9 +245,9 @@ public class MessengerQueueTest
         var queueName = nameof(Test_GetQueueByName).Replace("_", "");
 
         // Act
-        var queueBefore = await ServiceBusFixture.ServiceBusNamespace.GetTopicByName(queueName);
+        var queueBefore = await ServiceBusFixture.ServiceBusNamespace.GetTopicByNameAsync(queueName);
         await ServiceBusFixture.ServiceBusNamespace.CreateQueueIfNotExists(queueName);
-        var queueAfter = await ServiceBusFixture.ServiceBusNamespace.GetTopicByName(queueName);
+        var queueAfter = await ServiceBusFixture.ServiceBusNamespace.GetTopicByNameAsync(queueName);
 
         // Assert
         queueBefore.Should().BeNull();

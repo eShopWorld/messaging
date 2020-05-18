@@ -23,7 +23,7 @@ namespace Eshopworld.Messaging
         /// <returns>The <see cref="IQueue"/> entity object that references the Azure queue.</returns>
         public static async Task<IQueue> CreateQueueIfNotExists(this IServiceBusNamespace sbNamespace, string name)
         {
-            var queue = await sbNamespace.GetQueueByName(name); 
+            var queue = await sbNamespace.GetQueueByNameAsync(name); 
             if (queue != null) return queue;
             
             try
@@ -41,7 +41,7 @@ namespace Eshopworld.Messaging
                       ce.Message.Contains("SubCode=40000. The value for the requires duplicate detection property of an existing Queue cannot be changed"))
             {
                 // Create queue race condition occurred. Return existing queue.
-                return await sbNamespace.GetQueueByName(name);
+                return await sbNamespace.GetQueueByNameAsync(name);
             }
         }
 
@@ -53,7 +53,7 @@ namespace Eshopworld.Messaging
         /// <returns>The <see cref="ITopic"/> entity object that references the Azure topic.</returns>
         public static async Task<ITopic> CreateTopicIfNotExists(this IServiceBusNamespace sbNamespace, string name)
         {
-            var topic = await sbNamespace.GetTopicByName(name);
+            var topic = await sbNamespace.GetTopicByNameAsync(name);
             if (topic != null) return topic;
 
             try
@@ -68,7 +68,7 @@ namespace Eshopworld.Messaging
                       ce.Message.Contains("SubCode=40000. The value for the requires duplicate detection property of an existing Topic cannot be changed"))
             {
                 // Create topic race condition occurred. Return existing topic.
-                return await sbNamespace.GetTopicByName(name);
+                return await sbNamespace.GetTopicByNameAsync(name);
             }
         }
 
@@ -80,7 +80,7 @@ namespace Eshopworld.Messaging
         /// <returns>The <see cref="ISubscription"/> entity object that references the subscription.</returns>
         public static async Task<ISubscription> CreateSubscriptionIfNotExists(this ITopic topic, string name)
         {
-            var subscription = await topic.GetSubscriptionByName(name);
+            var subscription = await topic.GetSubscriptionByNameAsync(name);
             if (subscription != null) return subscription;
 
             return await topic.Subscriptions
@@ -112,7 +112,7 @@ namespace Eshopworld.Messaging
         /// <param name="sbNamespace">The sb namespace to extend.</param>
         /// <param name="name">The name of the topic to find.</param>
         /// <returns>The <see cref="ITopic"/> if exists and null if not.</returns>
-        public static async Task<ITopic> GetTopicByName(this IServiceBusNamespace sbNamespace, string name)
+        public static async Task<ITopic> GetTopicByNameAsync(this IServiceBusNamespace sbNamespace, string name)
         {
             try
             {
@@ -133,7 +133,7 @@ namespace Eshopworld.Messaging
         /// <param name="sbNamespace">The sb namespace to extend.</param>
         /// <param name="name">The name of the topic to find.</param>
         /// <returns>The <see cref="ITopic"/> if exists and null if not.</returns>
-        public static async Task<IQueue> GetQueueByName(this IServiceBusNamespace sbNamespace, string name)
+        public static async Task<IQueue> GetQueueByNameAsync(this IServiceBusNamespace sbNamespace, string name)
         {
             try
             {
@@ -154,7 +154,7 @@ namespace Eshopworld.Messaging
         /// <param name="topic">The topic to extend.</param>
         /// <param name="name">The name of the subscription to find.</param>
         /// <returns>The <see cref="ITopic"/> if exists and null if not.</returns>
-        public static async Task<ISubscription> GetSubscriptionByName(this ITopic topic, string name)
+        public static async Task<ISubscription> GetSubscriptionByNameAsync(this ITopic topic, string name)
         {
             try
             {

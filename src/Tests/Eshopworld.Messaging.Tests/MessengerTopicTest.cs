@@ -176,4 +176,46 @@ public class MessengerTopicTest
             rMessages.Should().BeEquivalentTo(messages);
         }
     }
+
+
+    /// <summary>Verify the GetTopicByNameAsync extension returns ITopic when exists and null when it does not.</summary>
+    [Fact, IsLayer1]
+    public async Task Test_GetTopicByName()
+    {
+        // Arrange
+        await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
+        var topicName = nameof(Test_GetTopicByName).Replace("_", "");
+
+        // Act
+        var topicBefore = await ServiceBusFixture.ServiceBusNamespace.GetTopicByNameAsync(topicName);
+        await ServiceBusFixture.ServiceBusNamespace.CreateTopicIfNotExists(topicName);
+        var topicAfter = await ServiceBusFixture.ServiceBusNamespace.GetTopicByNameAsync(topicName);
+
+        // Assert
+        topicBefore.Should().BeNull();
+        topicAfter.Should().NotBeNull();
+        topicAfter.Name.Should().Be(topicAfter.Name.ToLowerInvariant());
+    }
+
+    /// <summary>Verify the GetTopicSubscriptionByName extension returns ISubscription when exists and null when it does not.</summary>
+    [Fact, IsLayer1]
+    public async Task Test_GetTopicSubscriptionByName()
+    {
+        // Arrange
+        await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
+        var topicName = nameof(Test_GetTopicSubscriptionByName).Replace("_", "");
+        var subscriptionName = "Sub1";
+
+        // Act
+        var topic = await ServiceBusFixture.ServiceBusNamespace.CreateTopicIfNotExists(topicName);
+        var subscriptionBefore = await topic.GetSubscriptionByNameAsync(subscriptionName);
+        await topic.CreateSubscriptionIfNotExists(subscriptionName);
+        var subscriptionAfter = await topic.GetSubscriptionByNameAsync(subscriptionName);
+
+        // Assert
+        subscriptionBefore.Should().BeNull();
+        subscriptionAfter.Should().NotBeNull();
+        subscriptionAfter.Name.Should().Be(subscriptionName.ToLowerInvariant());
+    }
+
 }

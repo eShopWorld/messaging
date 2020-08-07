@@ -25,18 +25,18 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="icon.png" Pack="true" PackagePath=""/>
+    <None Include="icon.png" Pack="true" PackagePath="" />
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="eshopworld.core" Version="4.0.0" />
-    <PackageReference Include="jetbrains.annotations" Version="2019.1.3" />
-    <PackageReference Include="Microsoft.Azure.Management.Fluent" Version="1.31.0" />
-    <PackageReference Include="microsoft.azure.servicebus" Version="4.1.1" />
-    <PackageReference Include="Microsoft.Azure.Services.AppAuthentication" Version="1.4.0" />
+    <PackageReference Include="eshopworld.core" Version="4.1.6" />
+    <PackageReference Include="jetbrains.annotations" Version="2020.1.0" />
+    <PackageReference Include="Microsoft.Azure.Management.Fluent" Version="1.34.0" />
+    <PackageReference Include="microsoft.azure.servicebus" Version="4.1.4" />
+    <PackageReference Include="Microsoft.Azure.Services.AppAuthentication" Version="1.5.0" />
     <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.0.0" />
-    <PackageReference Include="polly" Version="7.2.0" />
-    <PackageReference Include="system.reactive" Version="4.3.2" />
+    <PackageReference Include="polly" Version="7.2.1" />
+    <PackageReference Include="system.reactive" Version="4.4.1" />
   </ItemGroup>
 
 </Project>

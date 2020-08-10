@@ -3,7 +3,7 @@
   <PropertyGroup>
     
     <Version>2.1.4</Version>
-    <PackageReleaseNotes>Upgdate of dependencies.</PackageReleaseNotes>
+    <PackageReleaseNotes>Update of dependencies.</PackageReleaseNotes>
 
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>

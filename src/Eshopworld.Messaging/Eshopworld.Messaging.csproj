@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     
-    <Version>2.1.3</Version>
-    <PackageReleaseNotes>Fix the use of EswEventNameAttribute.</PackageReleaseNotes>
+    <Version>2.1.4</Version>
+    <PackageReleaseNotes>Upgdate of dependencies.</PackageReleaseNotes>
 
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>

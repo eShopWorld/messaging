@@ -36,13 +36,13 @@ namespace Eshopworld.Messaging
 
         internal readonly ISubject<object> MessagesIn = new Subject<object>();
 
-        internal ConcurrentDictionary<Type, IDisposable> MessageSubs = new ConcurrentDictionary<Type, IDisposable>();
-        internal ConcurrentDictionary<Type, ServiceBusAdapter> ServiceBusAdapters = new ConcurrentDictionary<Type, ServiceBusAdapter>();
+        internal ConcurrentDictionary<string, IDisposable> MessageSubs = new ConcurrentDictionary<string, IDisposable>();
+        internal ConcurrentDictionary<string, ServiceBusAdapter> ServiceBusAdapters = new ConcurrentDictionary<string, ServiceBusAdapter>();
 
         internal IServiceBusNamespace AzureServiceBusNamespace;
 
         internal ServiceBusAdapter<T> GetQueueAdapterIfExists<T>() where T : class =>
-            ServiceBusAdapters.TryGetValue(typeof(T), out var result)
+            ServiceBusAdapters.TryGetValue(GetTypeName<T>(), out var result)
                 ? (ServiceBusAdapter<T>)result
                 : throw new InvalidOperationException($"Messages/events of type {typeof(T).FullName} haven't been setup properly yet");
 
@@ -62,24 +62,24 @@ namespace Eshopworld.Messaging
         public async Task Send<T>(T message)
             where T : class
         {
-            if (!ServiceBusAdapters.ContainsKey(typeof(T)))
+            if (!ServiceBusAdapters.ContainsKey(GetTypeName<T>()))
             {
                 SetupMessageType<T>(10, MessagingTransport.Queue);
             }
 
-            await ((QueueAdapter<T>)ServiceBusAdapters[typeof(T)]).Send(message).ConfigureAwait(false);
+            await ((QueueAdapter<T>)ServiceBusAdapters[GetTypeName<T>()]).Send(message).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
         public async Task Publish<T>(T @event)
             where T : class
         {
-            if (!ServiceBusAdapters.ContainsKey(typeof(T)))
+            if (!ServiceBusAdapters.ContainsKey(GetTypeName<T>()))
             {
                 SetupMessageType<T>(10, MessagingTransport.Topic);
             }
 
-            await ((TopicAdapter<T>)ServiceBusAdapters[typeof(T)]).Send(@event).ConfigureAwait(false);
+            await ((TopicAdapter<T>)ServiceBusAdapters[GetTypeName<T>()]).Send(@event).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
@@ -92,7 +92,7 @@ namespace Eshopworld.Messaging
         public void Receive<T>(Action<T> callback, int batchSize = 10)
             where T : class
         {
-            if (!MessageSubs.TryAdd(typeof(T), MessagesIn.OfType<T>().Subscribe(callback)))
+            if (!MessageSubs.TryAdd(GetTypeName<T>(), MessagesIn.OfType<T>().Subscribe(callback)))
             {
                 throw new InvalidOperationException("You already added a callback to this message type. Only one callback per type is supported.");
             }
@@ -104,7 +104,7 @@ namespace Eshopworld.Messaging
         public async Task Subscribe<T>(Action<T> callback, string subscriptionName, int batchSize = 10)
             where T : class
         {
-            if (!MessageSubs.TryAdd(typeof(T), MessagesIn.OfType<T>().Subscribe(callback)))
+            if (!MessageSubs.TryAdd(GetTypeName<T>(), MessagesIn.OfType<T>().Subscribe(callback)))
             {
                 throw new InvalidOperationException("You already added a callback to this message type. Only one callback per type is supported.");
             }
@@ -126,10 +126,10 @@ namespace Eshopworld.Messaging
             {
                 GetQueueAdapterIfExists<T>().StopReading();
 
-                if (MessageSubs.ContainsKey(typeof(T))) // if reactive messenger is used, the subscriptions are handled by the package client
+                if (MessageSubs.ContainsKey(GetTypeName<T>())) // if reactive messenger is used, the subscriptions are handled by the package client
                 {
-                    MessageSubs[typeof(T)].Dispose();
-                    MessageSubs.TryRemove(typeof(T), out _);
+                    MessageSubs[GetTypeName<T>()].Dispose();
+                    MessageSubs.TryRemove(GetTypeName<T>(), out _);
                 }
             }
         }
@@ -211,7 +211,7 @@ namespace Eshopworld.Messaging
         {
             ServiceBusAdapter adapter = null;
 
-            if (!ServiceBusAdapters.ContainsKey(typeof(T)))
+            if (!ServiceBusAdapters.ContainsKey(GetTypeName<T>()))
             {
                 switch (transport)
                 {
@@ -225,14 +225,14 @@ namespace Eshopworld.Messaging
                         throw new InvalidOperationException($"The {nameof(MessagingTransport)} was extended and the use case on the {nameof(SetupMessageType)} switch wasn't.");
                 }
 
-                if (!ServiceBusAdapters.TryAdd(typeof(T), adapter))
+                if (!ServiceBusAdapters.TryAdd(GetTypeName<T>(), adapter))
                 {
                     adapter.Dispose();
                     adapter = null;
                 }
             }
 
-            return (ServiceBusAdapter<T>)adapter ?? (ServiceBusAdapter<T>)ServiceBusAdapters[typeof(T)];
+            return (ServiceBusAdapter<T>)adapter ?? (ServiceBusAdapter<T>)ServiceBusAdapters[GetTypeName<T>()];
         }
 
         /// <inheritdoc />
@@ -253,5 +253,7 @@ namespace Eshopworld.Messaging
                 ServiceBusAdapters = null;
             }
         }
+
+        private static string GetTypeName<T>() => typeof(T).FullName ?? typeof(T).Name;
     }
 }

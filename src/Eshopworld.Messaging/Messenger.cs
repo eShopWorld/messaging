@@ -83,9 +83,14 @@ namespace Eshopworld.Messaging
         }
 
         /// <inheritdoc />
-        public Task Publish<T>(T @event, string topicName) where T : class
+        public async Task Publish<T>(T @event, string topicName) where T : class
         {
-            throw new NotImplementedException();
+            if (!ServiceBusAdapters.ContainsKey(topicName))
+            {
+                SetupMessageType<T>(10, MessagingTransport.Topic, topicName);
+            }
+            
+            await ((TopicAdapter<T>)ServiceBusAdapters[topicName]).Send(@event).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
@@ -206,33 +211,39 @@ namespace Eshopworld.Messaging
         /// <typeparam name="T">The type of the message we are setting up.</typeparam>
         /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the <see cref="MessageReceiver"/>.</param>
         /// <param name="transport">The type of the transport to setup</param>
+        /// <param name="topicName">Topic name to be used to create the topic. If not provided the type <typeparam name="T"/> will be used</param>
         /// <returns>The message queue adapter.</returns>
-        internal ServiceBusAdapter<T> SetupMessageType<T>(int batchSize, MessagingTransport transport) where T : class
+        internal ServiceBusAdapter<T> SetupMessageType<T>(int batchSize, MessagingTransport transport,
+            string topicName = null) where T : class
         {
             ServiceBusAdapter adapter = null;
 
-            if (!ServiceBusAdapters.ContainsKey(GetTypeName<T>()))
+            if (!ServiceBusAdapters.ContainsKey(topicName ?? GetTypeName<T>()))
             {
                 switch (transport)
                 {
                     case MessagingTransport.Queue:
-                        adapter = new QueueAdapter<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver(), batchSize, this);
+                        adapter = new QueueAdapter<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver(),
+                            batchSize, this);
                         break;
                     case MessagingTransport.Topic:
-                        adapter = new TopicAdapter<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver(), batchSize, this);
+                        adapter = new TopicAdapter<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver(),
+                            batchSize, this, topicName);
                         break;
                     default:
-                        throw new InvalidOperationException($"The {nameof(MessagingTransport)} was extended and the use case on the {nameof(SetupMessageType)} switch wasn't.");
+                        throw new InvalidOperationException(
+                            $"The {nameof(MessagingTransport)} was extended and the use case on the {nameof(SetupMessageType)} switch wasn't.");
                 }
 
-                if (!ServiceBusAdapters.TryAdd(GetTypeName<T>(), adapter))
+                if (!ServiceBusAdapters.TryAdd(topicName ?? GetTypeName<T>(), adapter))
                 {
                     adapter.Dispose();
                     adapter = null;
                 }
             }
 
-            return (ServiceBusAdapter<T>)adapter ?? (ServiceBusAdapter<T>)ServiceBusAdapters[GetTypeName<T>()];
+            return (ServiceBusAdapter<T>) adapter ??
+                   (ServiceBusAdapter<T>) ServiceBusAdapters[topicName ?? GetTypeName<T>()];
         }
 
         /// <inheritdoc />

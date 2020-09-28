@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     
-    <Version>2.1.4</Version>
-    <PackageReleaseNotes>Update of dependencies.</PackageReleaseNotes>
+    <Version>2.1.5</Version>
+    <PackageReleaseNotes>Add new interfaces for topic names to Messenger.</PackageReleaseNotes>
 
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>

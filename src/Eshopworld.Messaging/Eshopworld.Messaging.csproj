@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     
-    <Version>2.1.4</Version>
-    <PackageReleaseNotes>Update of dependencies.</PackageReleaseNotes>
+    <Version>2.1.5</Version>
+    <PackageReleaseNotes>Add new interfaces for topic names to Messenger.</PackageReleaseNotes>
 
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>
@@ -29,7 +29,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="eshopworld.core" Version="4.1.6" />
+    <PackageReference Include="eshopworld.core" Version="4.1.7" />
     <PackageReference Include="jetbrains.annotations" Version="2020.1.0" />
     <PackageReference Include="Microsoft.Azure.Management.Fluent" Version="1.34.0" />
     <PackageReference Include="microsoft.azure.servicebus" Version="4.1.4" />

@@ -37,6 +37,19 @@ public class MessengerTopicTest
     }
 
     [Fact, IsLayer1]
+    public async Task Test_SendWithTopic_CreatesTheTopic()
+    {
+        await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
+        var topicName = Lorem.GetWord();
+
+        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
+        {
+            await msn.Publish(new TestMessage(), topicName);
+            ServiceBusFixture.ServiceBusNamespace.AssertSingleTopicExists(topicName);
+        }
+    }
+
+    [Fact, IsLayer1]
     public async Task Test_SendFailureCorrectRebuildSequence()
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
@@ -83,10 +96,18 @@ public class MessengerTopicTest
         }
     }
 
-    [EswEventName("test.prova.nino")]
-    class TestNinoEvent : DomainEvent
+    [Fact, IsLayer1]
+    public async Task Test_ReceiveWithTopicName_CreatesTheTopic()
     {
+        await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
+        var topicName = Lorem.GetWord();
 
+        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
+        {
+            var subscriptionName = nameof(Test_ReceiveWithTopicName_CreatesTheTopic).Replace("_", "");
+            await msn.Subscribe<TestMessage>(_ => { }, subscriptionName, topicName);
+            ServiceBusFixture.ServiceBusNamespace.AssertSingleTopicSubscriptionExists(topicName, subscriptionName);
+        }
     }
 
     [Theory, IsLayer1]

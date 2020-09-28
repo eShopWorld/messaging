@@ -162,8 +162,8 @@ public class MessengerQueueTest
             }
             catch (TaskCanceledException) { /* soak the kill switch */ }
 
-            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage)]).Messages.Should().BeEmpty();
-            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage)]).LockTimers.Should().BeEmpty();
+            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage).GetEntityName()]).Messages.Should().BeEmpty();
+            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage).GetEntityName()]).LockTimers.Should().BeEmpty();
         }
     }
 
@@ -193,8 +193,8 @@ public class MessengerQueueTest
             }
             catch (TaskCanceledException) { /* soak the kill switch */ }
 
-            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage)]).Messages.Should().BeEmpty();
-            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage)]).LockTimers.Should().BeEmpty();
+            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage).GetEntityName()]).Messages.Should().BeEmpty();
+            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage).GetEntityName()]).LockTimers.Should().BeEmpty();
         }
     }
 
@@ -231,8 +231,8 @@ public class MessengerQueueTest
             rMessage.Should().NotBeNull();
             rMessage.Should().BeEquivalentTo(message);
 
-            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage)]).Messages.Should().BeEmpty();
-            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage)]).LockTimers.Should().BeEmpty();
+            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage).GetEntityName()]).Messages.Should().BeEmpty();
+            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage).GetEntityName()]).LockTimers.Should().BeEmpty();
         }
     }
 

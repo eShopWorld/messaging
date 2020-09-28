@@ -85,6 +85,7 @@ namespace Eshopworld.Messaging
         /// <inheritdoc />
         public async Task Publish<T>(T @event, string topicName) where T : class
         {
+            CheckTopicName(topicName);
             if (!ServiceBusAdapters.ContainsKey(topicName))
             {
                 SetupMessageType<T>(10, MessagingTransport.Topic, topicName);
@@ -120,7 +121,8 @@ namespace Eshopworld.Messaging
         /// <inheritdoc />
         public async Task Subscribe<T>(Action<T> callback, string subscriptionName, string topicName, int batchSize = 10) where T : class
         {
-            if (!MessageSubs.TryAdd(topicName ?? GetTypeName<T>(), MessagesIn.OfType<T>().Subscribe(callback)))
+            CheckTopicName(topicName);
+            if (!MessageSubs.TryAdd(topicName, MessagesIn.OfType<T>().Subscribe(callback)))
             {
                 throw new InvalidOperationException("You already added a callback to this topic. Only one callback per topic is supported.");
             }
@@ -271,5 +273,9 @@ namespace Eshopworld.Messaging
         }
 
         private static string GetTypeName<T>() => typeof(T).FullName ?? typeof(T).Name;
+        private static void CheckTopicName(string topicName)
+        {
+            if (string.IsNullOrEmpty(topicName)) throw new ArgumentException($"{nameof(topicName)} cannot be empty");
+        }
     }
 }

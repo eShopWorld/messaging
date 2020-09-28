@@ -83,11 +83,6 @@ public class MessengerTopicTest
         }
     }
 
-    [EswEventName("test.prova.nino")]
-    class TestNinoEvent : DomainEvent
-    {
-
-    }
 
     [Theory, IsLayer1]
     [InlineData(typeof(TestEventWithoutAttribute))]

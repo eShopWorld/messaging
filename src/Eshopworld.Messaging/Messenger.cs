@@ -6,6 +6,7 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading.Tasks;
 using Eshopworld.Core;
+using Eshopworld.Messaging.Core;
 using JetBrains.Annotations;
 using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
@@ -26,7 +27,7 @@ namespace Eshopworld.Messaging
     /// Some checks are only valuable if you have a unique messenger class in your application. If you set it up as transient
     /// then some checks will only run against a specific instance and won't really validate the entire behaviour.
     /// </remarks>
-    public class Messenger : IDoFullMessaging, IDoFullReactiveMessaging
+    public class Messenger : IDoFullMessaging, IDoFullReactiveMessaging, IMessagingWithTopicName
     {
         internal readonly object Gate = new object();
         internal readonly string ConnectionString;
@@ -82,6 +83,12 @@ namespace Eshopworld.Messaging
         }
 
         /// <inheritdoc />
+        public Task Publish<T>(T @event, string topicName) where T : class
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <inheritdoc />
         public void Receive<T>(Action<T> callback, int batchSize = 10)
             where T : class
         {
@@ -103,6 +110,12 @@ namespace Eshopworld.Messaging
             }
 
             await ((TopicAdapter<T>)SetupMessageType<T>(batchSize, MessagingTransport.Topic)).StartReading(subscriptionName).ConfigureAwait(false);
+        }
+
+        /// <inheritdoc />
+        public Task Subscribe<T>(Action<T> callback, string subscriptionName, string topicName, int batchSize = 10) where T : class
+        {
+            throw new NotImplementedException();
         }
 
         /// <inheritdoc />

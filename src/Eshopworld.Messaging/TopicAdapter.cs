@@ -21,6 +21,7 @@ namespace Eshopworld.Messaging
         internal readonly string ConnectionString;
         internal readonly Messenger Messenger;
         internal readonly Type TopicType;
+        internal readonly string TopicName;
         internal ITopic AzureTopic;
         internal TopicClient Sender;
         internal ISubscription AzureTopicSubscription;
@@ -35,23 +36,29 @@ namespace Eshopworld.Messaging
         /// <param name="messagesIn">The <see cref="IObserver{IMessage}"/> used to push received messages into the pipeline.</param>
         /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
         /// <param name="messenger">The <see cref="Messenger"/> instance that created this adapter.</param>
-        public TopicAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize, Messenger messenger)
+        public TopicAdapter(
+            [NotNull]string connectionString, 
+            [NotNull]string subscriptionId, 
+            [NotNull]IObserver<T> messagesIn, 
+            int batchSize, 
+            Messenger messenger)
             : base(messagesIn, batchSize)
         {
             ConnectionString = connectionString;
             Messenger = messenger;
 
             TopicType = typeof(T);
+            TopicName = TopicType.GetEntityName();
 
-            if (TopicType.GetEntityName()?.Length > 260) // SB quota: Entity path max length
+            if (TopicName.Length > 260) // SB quota: Entity path max length
             {
                 throw new InvalidOperationException(
-                    $@"You can't create queues for the type {TopicType.GetEntityName()} because the full name (namespace + name) exceeds 260 characters.
+                    $@"You can't create queues for the type {TopicName} because the full name (namespace + name) exceeds 260 characters.
 I suggest you reduce the size of the namespace: '{TopicType.Namespace}'.");
             }
 
             AzureTopic = Messenger.GetRefreshedServiceBusNamespace().ConfigureAwait(false).GetAwaiter().GetResult()
-                                  .CreateTopicIfNotExists(TopicType.GetEntityName()).ConfigureAwait(false).GetAwaiter().GetResult();
+                                  .CreateTopicIfNotExists(TopicName).ConfigureAwait(false).GetAwaiter().GetResult();
       
             RebuildSender().ConfigureAwait(false).GetAwaiter().GetResult();
         }
@@ -136,7 +143,7 @@ I suggest you reduce the size of the namespace: '{TopicType.Namespace}'.");
 
             AzureTopic = await (await Messenger.GetRefreshedServiceBusNamespace()
                                                .ConfigureAwait(false))
-                               .CreateTopicIfNotExists(TopicType.GetEntityName())
+                               .CreateTopicIfNotExists(TopicName)
                                .ConfigureAwait(false);
 
             return AzureTopic;

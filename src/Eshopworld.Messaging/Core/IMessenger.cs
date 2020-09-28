@@ -31,14 +31,14 @@ namespace Eshopworld.Messaging.Core
     {
         /// <summary>
         /// Sets up a call back for receiving any event of type <typeparamref name="T"/> for topic name <paramref name="topicName"/>.
-        /// If you try to setup more then one callback to the same message or event type <typeparamref name="T"/> for topic name <paramref name="topicName"/> you'll get an <see cref="InvalidOperationException"/>.
+        /// If you try to setup more then one callback to the same topic name <paramref name="topicName"/> you'll get an <see cref="InvalidOperationException"/>.
         /// </summary>
         /// <typeparam name="T">The type of the event that we are subscribing to receiving.</typeparam>
         /// <param name="callback">The <see cref="Action{T}"/> delegate that will be called for each event received.</param>
         /// <param name="subscriptionName">The name of the reliable subscription we're doing for this event type.</param>
         /// <param name="topicName">The name of the topic the subscription is created for</param>
         /// <param name="batchSize">The size of the batch when reading for a topic subscription - used as the pre-fetch parameter of the message receiver</param>
-        /// <exception cref="InvalidOperationException">Thrown when you attempt to setup multiple callbacks against the same <typeparamref name="T"/> parameter for the same <paramref name="topicName"/>.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when you attempt to setup multiple callbacks against the same <paramref name="topicName"/>.</exception>
         Task Subscribe<T>(
             Action<T> callback, 
             string subscriptionName, 

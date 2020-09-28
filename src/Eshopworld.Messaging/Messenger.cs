@@ -118,9 +118,14 @@ namespace Eshopworld.Messaging
         }
 
         /// <inheritdoc />
-        public Task Subscribe<T>(Action<T> callback, string subscriptionName, string topicName, int batchSize = 10) where T : class
+        public async Task Subscribe<T>(Action<T> callback, string subscriptionName, string topicName, int batchSize = 10) where T : class
         {
-            throw new NotImplementedException();
+            if (!MessageSubs.TryAdd(topicName ?? GetTypeName<T>(), MessagesIn.OfType<T>().Subscribe(callback)))
+            {
+                throw new InvalidOperationException("You already added a callback to this topic. Only one callback per topic is supported.");
+            }
+
+            await ((TopicAdapter<T>)SetupMessageType<T>(batchSize, MessagingTransport.Topic, topicName)).StartReading(subscriptionName).ConfigureAwait(false);
         }
 
         /// <inheritdoc />

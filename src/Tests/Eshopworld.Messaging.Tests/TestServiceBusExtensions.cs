@@ -51,12 +51,23 @@ namespace Eshopworld.Messaging.Tests
         /// <param name="type">The event <see cref="Type"/> that we are checking the topic for.</param>
         public static void AssertSingleTopicExists(this IServiceBusNamespace sbNamespace, Type type)
         {
+            AssertSingleTopicExists(sbNamespace, type.GetEntityName());
+        }
+
+        /// <summary>
+        /// Checks if a given topic exists to facilitate tests that scorch the namespace and check if the topic was properly created.
+        /// </summary>
+        /// <param name="sbNamespace">The <see cref="IServiceBusNamespace"/> that we are checking in.</param>
+        /// <param name="topicName">The topic name</param>
+        public static void AssertSingleTopicExists(this IServiceBusNamespace sbNamespace, string topicName)
+        {
             sbNamespace.Refresh();
             var topics = sbNamespace.Topics.List().ToList();
 
             topics.Count.Should().Be(1);
-            topics.SingleOrDefault(s => string.Equals(s.Name, type.GetEntityName(), StringComparison.CurrentCultureIgnoreCase)).Should().NotBeNull();
+            topics.SingleOrDefault(s => string.Equals(s.Name, topicName, StringComparison.CurrentCultureIgnoreCase)).Should().NotBeNull();
         }
+
 
         /// <summary>
         /// Checks if a given topic exists to facilitate tests that scorch the namespace and check if the topic was properly created.
@@ -66,8 +77,19 @@ namespace Eshopworld.Messaging.Tests
         /// <param name="subscriptionName">The name of the subscription that we are checking on the topic.</param>
         public static void AssertSingleTopicSubscriptionExists(this IServiceBusNamespace sbNamespace, Type type, string subscriptionName)
         {
+            AssertSingleTopicSubscriptionExists(sbNamespace, type.GetEntityName(),subscriptionName);
+        }
+
+        /// <summary>
+        /// Checks if a given topic exists to facilitate tests that scorch the namespace and check if the topic was properly created.
+        /// </summary>
+        /// <param name="sbNamespace">The <see cref="IServiceBusNamespace"/> that we are checking in.</param>
+        /// <param name="topicName">The topic name we are checking for</param>
+        /// <param name="subscriptionName">The name of the subscription that we are checking on the topic.</param>
+        public static void AssertSingleTopicSubscriptionExists(this IServiceBusNamespace sbNamespace, string topicName, string subscriptionName)
+        {
             sbNamespace.Refresh();
-            var subscriptions = sbNamespace.Topics.GetByName(type.GetEntityName()).Subscriptions.List().ToList();
+            var subscriptions = sbNamespace.Topics.GetByName(topicName).Subscriptions.List().ToList();
 
             subscriptions.Count.Should().Be(1);
             subscriptions.SingleOrDefault(t => string.Equals(t.Name, subscriptionName, StringComparison.CurrentCultureIgnoreCase)).Should().NotBeNull();

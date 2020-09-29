@@ -40,11 +40,6 @@ namespace Eshopworld.Messaging
 
         internal IServiceBusNamespace AzureServiceBusNamespace;
 
-        internal ServiceBusAdapter<T> GetQueueAdapterIfExists<T>() where T : class =>
-            ServiceBusAdapters.TryGetValue(GetTypeName<T>(), out var result)
-                ? (ServiceBusAdapter<T>)result
-                : throw new InvalidOperationException($"Messages/events of type {typeof(T).FullName} haven't been setup properly yet");
-        
         internal ServiceBusAdapter GetQueueAdapterIfExists(string topicName) =>
             ServiceBusAdapters.TryGetValue(topicName, out var result)
                 ? result

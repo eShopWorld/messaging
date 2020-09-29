@@ -35,6 +35,8 @@ namespace Eshopworld.Messaging.Tests
                                Environment.GetEnvironmentVariable(KeyVaultUriName, EnvironmentVariableTarget.User)) ??
                                Environment.GetEnvironmentVariable(KeyVaultUriName, EnvironmentVariableTarget.Process);
 
+            keyVaultUri = "https://esw-tooling-tests.vault.azure.net/";
+
             var tokenProvider = new AzureServiceTokenProvider();
             var config = new ConfigurationBuilder().AddAzureKeyVault(
                                                        keyVaultUri,

@@ -162,6 +162,7 @@ namespace Eshopworld.Messaging
 
         /// <inheritdoc />
         public Task Lock<T>(T message) where T : class => Lock(message, GetTypeName<T>());
+
         public async Task Lock<T>(T message, string topicName) where T : class
         {
             CheckTopicName(topicName);
@@ -170,6 +171,7 @@ namespace Eshopworld.Messaging
 
         /// <inheritdoc />
         public Task Complete<T>(T message) where T : class => Complete(message, GetTypeName<T>());
+
         public async Task Complete<T>(T message, string topicName) where T : class
         {
             CheckTopicName(topicName);
@@ -187,6 +189,7 @@ namespace Eshopworld.Messaging
 
         /// <inheritdoc />
         public Task Error<T>(T message) where T : class => Error(message, GetTypeName<T>());
+
         public async Task Error<T>(T message, string topicName) where T : class
         {
             CheckTopicName(topicName);
@@ -300,6 +303,7 @@ namespace Eshopworld.Messaging
         }
 
         private static string GetTypeName<T>() => typeof(T).FullName ?? typeof(T).Name;
+
         private static void CheckTopicName(string topicName)
         {
             if (string.IsNullOrEmpty(topicName)) throw new ArgumentException($"{nameof(topicName)} cannot be empty");

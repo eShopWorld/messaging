@@ -65,6 +65,15 @@ namespace Eshopworld.Messaging
                 }
             }
         }
+        
+        /// <inheritdoc />
+        internal override Task Complete<T1>(T1 message)
+        {
+            if (!(message is T tMessage))
+                throw new ArgumentException($"{nameof(message)} should be of type {typeof(T)}");
+            
+            return Complete(tMessage);
+        }
 
         /// <summary>
         /// Completes a message by doing the actual READ from the queue.
@@ -92,6 +101,15 @@ namespace Eshopworld.Messaging
                 }).ConfigureAwait(false);
 
             Release(message);
+        }
+
+        /// <inheritdoc />
+        internal override Task Abandon<T1>(T1 message)
+        {
+            if (!(message is T tMessage))
+                throw new ArgumentException($"{nameof(message)} should be of type {typeof(T)}");
+            
+            return Abandon(tMessage);
         }
 
         /// <summary>
@@ -122,6 +140,15 @@ namespace Eshopworld.Messaging
             Release(message);
         }
 
+        /// <inheritdoc />
+        internal override Task Error<T1>(T1 message)
+        {
+            if (!(message is T tMessage))
+                throw new ArgumentException($"{nameof(message)} should be of type {typeof(T)}");
+            
+            return Error(tMessage);
+        }
+
         /// <summary>
         /// Errors a message by moving it specifically to the error queue.
         /// </summary>
@@ -148,6 +175,15 @@ namespace Eshopworld.Messaging
                 }).ConfigureAwait(false);
 
             Release(message);
+        }
+
+        /// <inheritdoc />
+        internal override Task Lock<T1>(T1 message)
+        {
+            if (!(message is T tMessage))
+                throw new ArgumentException($"{nameof(message)} should be of type {typeof(T)}");
+            
+            return Lock(tMessage);
         }
 
         /// <summary>
@@ -234,20 +270,15 @@ namespace Eshopworld.Messaging
             }
         }
 
-        /// <summary>
-        /// Stops pooling the queue for reading messages.
-        /// </summary>
-        internal void StopReading()
+        /// <inheritdoc />
+        internal override void StopReading()
         {
             ReadTimer.Dispose();
             ReadTimer = null;
         }
 
-        /// <summary>
-        /// Sets the size of the message batch during receives.
-        /// </summary>
-        /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
-        internal void SetBatchSize(int batchSize)
+        /// <inheritdoc />
+        internal override void SetBatchSize(int batchSize)
         {
             BatchSize = batchSize;
             Receiver.PrefetchCount = batchSize;
@@ -293,6 +324,43 @@ namespace Eshopworld.Messaging
             Dispose(true);
             GC.SuppressFinalize(this);
         }
+
+        /// <summary>
+        /// Completes a message by doing the actual READ from the queue.
+        /// </summary>
+        /// <param name="message">The message we want to complete.</param>
+        internal abstract Task Complete<T>(T message) where T : class;
+
+        /// <summary>
+        /// Abandons a message by returning it to the queue.
+        /// </summary>
+        /// <param name="message">The message we want to abandon.</param>
+        internal abstract Task Abandon<T>(T message);
+
+        /// <summary>
+        /// Errors a message by moving it specifically to the error queue.
+        /// </summary>
+        /// <param name="message">The message that we want to move to the error queue.</param>
+        internal abstract Task Error<T>(T message);
+
+        /// <summary>
+        /// Sets the size of the message batch during receives.
+        /// </summary>
+        /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
+        internal abstract void SetBatchSize(int batchSize);
+
+        /// <summary>
+        /// Stops pooling the queue for reading messages.
+        /// </summary>
+        internal abstract void StopReading();
+
+        /// <summary>
+        /// Creates a perpetual lock on a message by continuously renewing it's lock.
+        /// This is usually created at the start of a handler so that we guarantee that we still have a valid lock
+        /// and we retain that lock until we finish handling the message.
+        /// </summary>
+        /// <param name="message">The message that we want to create the lock on.</param>
+        internal abstract Task Lock<T>(T message) where T : class;
 
         protected abstract void Dispose(bool disposing);
     }

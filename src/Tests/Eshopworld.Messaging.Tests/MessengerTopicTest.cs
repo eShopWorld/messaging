@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Eshopworld.Core;
 using Eshopworld.Messaging;
-using Eshopworld.Messaging.Core;
 using Eshopworld.Messaging.Tests;
 using Eshopworld.Tests.Core;
 using FluentAssertions;
@@ -43,7 +42,7 @@ public class MessengerTopicTest
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
         var topicName = Lorem.GetWord();
 
-        using (IMessagingWithTopicName msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
+        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
         {
             await msn.Publish(new TestMessage(), topicName);
             ServiceBusFixture.ServiceBusNamespace.AssertSingleTopicExists(topicName);
@@ -103,15 +102,13 @@ public class MessengerTopicTest
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
         var topicName = Lorem.GetWord();
 
-        using (IMessagingWithTopicName msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
+        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
         {
             var subscriptionName = nameof(Test_ReceiveCreatesTheTopic).Replace("_", "");
             await msn.Subscribe<TestMessage>(_ => { }, subscriptionName, topicName);
             ServiceBusFixture.ServiceBusNamespace.AssertSingleTopicSubscriptionExists(typeof(TestMessage), subscriptionName);
         }
     }
-
-
 
     [Theory, IsLayer1]
     [InlineData(typeof(TestEventWithoutAttribute))]

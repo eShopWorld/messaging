@@ -6,7 +6,6 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading.Tasks;
 using Eshopworld.Core;
-using Eshopworld.Messaging.Core;
 using JetBrains.Annotations;
 using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
@@ -27,7 +26,7 @@ namespace Eshopworld.Messaging
     /// Some checks are only valuable if you have a unique messenger class in your application. If you set it up as transient
     /// then some checks will only run against a specific instance and won't really validate the entire behaviour.
     /// </remarks>
-    public class Messenger : IDoFullMessaging, IDoFullReactiveMessaging, IMessagingWithTopicName
+    public class Messenger : IDoFullMessaging, IDoFullReactiveMessaging
     {
         internal readonly object Gate = new object();
         internal readonly string ConnectionString;
@@ -45,6 +44,11 @@ namespace Eshopworld.Messaging
             ServiceBusAdapters.TryGetValue(GetTypeName<T>(), out var result)
                 ? (ServiceBusAdapter<T>)result
                 : throw new InvalidOperationException($"Messages/events of type {typeof(T).FullName} haven't been setup properly yet");
+        
+        internal ServiceBusAdapter GetQueueAdapterIfExists(string topicName) =>
+            ServiceBusAdapters.TryGetValue(topicName, out var result)
+                ? result
+                : throw new InvalidOperationException($"Messages/events for {topicName} haven't been setup properly yet");
 
         /// <summary>
         /// Initializes a new instance of <see cref="Messenger"/>.
@@ -131,17 +135,18 @@ namespace Eshopworld.Messaging
         }
 
         /// <inheritdoc />
-        public void CancelReceive<T>()
-            where T : class
+        public void CancelReceive<T>() where T : class => CancelReceive(GetTypeName<T>());
+
+        public void CancelReceive(string topicName)
         {
             lock (Gate)
             {
-                GetQueueAdapterIfExists<T>().StopReading();
+                GetQueueAdapterIfExists(topicName).StopReading();
 
-                if (MessageSubs.ContainsKey(GetTypeName<T>())) // if reactive messenger is used, the subscriptions are handled by the package client
+                if (MessageSubs.ContainsKey(topicName)) // if reactive messenger is used, the subscriptions are handled by the package client
                 {
-                    MessageSubs[GetTypeName<T>()].Dispose();
-                    MessageSubs.TryRemove(GetTypeName<T>(), out _);
+                    MessageSubs[topicName].Dispose();
+                    MessageSubs.TryRemove(topicName, out _);
                 }
             }
         }
@@ -161,19 +166,46 @@ namespace Eshopworld.Messaging
         }
 
         /// <inheritdoc />
-        public async Task Lock<T>(T message) where T : class => await GetQueueAdapterIfExists<T>().Lock(message).ConfigureAwait(false);
+        public Task Lock<T>(T message) where T : class => Lock(message, GetTypeName<T>());
+        public async Task Lock<T>(T message, string topicName) where T : class
+        {
+            CheckTopicName(topicName);
+            await GetQueueAdapterIfExists(topicName).Lock(message).ConfigureAwait(false);
+        }
 
         /// <inheritdoc />
-        public async Task Complete<T>(T message) where T : class => await GetQueueAdapterIfExists<T>().Complete(message).ConfigureAwait(false);
+        public Task Complete<T>(T message) where T : class => Complete(message, GetTypeName<T>());
+        public async Task Complete<T>(T message, string topicName) where T : class
+        {
+            CheckTopicName(topicName);
+            await GetQueueAdapterIfExists(topicName).Complete(message).ConfigureAwait(false);
+        }
 
         /// <inheritdoc />
-        public async Task Abandon<T>(T message) where T : class => await GetQueueAdapterIfExists<T>().Abandon(message).ConfigureAwait(false);
+        public Task Abandon<T>(T message) where T : class => Abandon(message, GetTypeName<T>());
+
+        public async Task Abandon<T>(T message, string topicName) where T : class
+        {
+            CheckTopicName(topicName);
+            await GetQueueAdapterIfExists(topicName).Abandon(message).ConfigureAwait(false);
+        }
 
         /// <inheritdoc />
-        public async Task Error<T>(T message) where T : class => await GetQueueAdapterIfExists<T>().Error(message).ConfigureAwait(false);
+        public Task Error<T>(T message) where T : class => Error(message, GetTypeName<T>());
+        public async Task Error<T>(T message, string topicName) where T : class
+        {
+            CheckTopicName(topicName);
+            await GetQueueAdapterIfExists(topicName).Error(message).ConfigureAwait(false);
+        }
 
         /// <inheritdoc />
-        public void SetBatchSize<T>(int batchSize) where T : class => GetQueueAdapterIfExists<T>().SetBatchSize(batchSize);
+        public void SetBatchSize<T>(int batchSize) where T : class => SetBatchSize<T>(batchSize, GetTypeName<T>());
+
+        public void SetBatchSize<T>(int batchSize, string topicName) where T : class
+        {
+            CheckTopicName(topicName);
+            GetQueueAdapterIfExists(topicName).SetBatchSize(batchSize);
+        }
 
         /// <summary>
         /// Attempts to refresh the stored <see cref="IServiceBusNamespace"/> fluent construct.

@@ -104,7 +104,7 @@ public class MessengerTopicTest
 
         using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
         {
-            var subscriptionName = nameof(Test_ReceiveCreatesTheTopic).Replace("_", "");
+            var subscriptionName = nameof(Test_ReceiveWithTopicName_CreatesTheTopic).Replace("_", "");
             await msn.Subscribe<TestMessage>(_ => { }, subscriptionName, topicName);
             ServiceBusFixture.ServiceBusNamespace.AssertSingleTopicSubscriptionExists(topicName, subscriptionName);
         }

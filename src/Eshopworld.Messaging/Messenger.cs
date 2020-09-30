@@ -99,7 +99,7 @@ namespace Eshopworld.Messaging
 
         /// <inheritdoc />
         public Task Subscribe<T>(Action<T> callback, string subscriptionName, int batchSize = 10)
-            where T : class => Subscribe<T>(callback, subscriptionName, GetTypeName<T>());
+            where T : class => Subscribe(callback, subscriptionName, GetTypeName<T>());
 
         /// <inheritdoc />
         public async Task Subscribe<T>(Action<T> callback, string subscriptionName, string topicName, int batchSize = 10) where T : class
@@ -287,7 +287,7 @@ namespace Eshopworld.Messaging
             }
         }
 
-        private static string GetTypeName<T>() => typeof(T).FullName ?? typeof(T).Name;
+        private static string GetTypeName<T>() => typeof(T).GetEntityName();
 
         private static void CheckTopicName(string topicName)
         {

@@ -77,7 +77,7 @@ namespace Eshopworld.Messaging.Tests
         /// <param name="subscriptionName">The name of the subscription that we are checking on the topic.</param>
         public static void AssertSingleTopicSubscriptionExists(this IServiceBusNamespace sbNamespace, Type type, string subscriptionName)
         {
-            AssertSingleTopicSubscriptionExists(sbNamespace, type.GetEntityName(),subscriptionName);
+            AssertSingleTopicSubscriptionExists(sbNamespace, type.GetEntityName(), subscriptionName);
         }
 
         /// <summary>

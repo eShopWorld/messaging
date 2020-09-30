@@ -106,7 +106,7 @@ public class MessengerTopicTest
         {
             var subscriptionName = nameof(Test_ReceiveCreatesTheTopic).Replace("_", "");
             await msn.Subscribe<TestMessage>(_ => { }, subscriptionName, topicName);
-            ServiceBusFixture.ServiceBusNamespace.AssertSingleTopicSubscriptionExists(typeof(TestMessage), subscriptionName);
+            ServiceBusFixture.ServiceBusNamespace.AssertSingleTopicSubscriptionExists(topicName, subscriptionName);
         }
     }
 

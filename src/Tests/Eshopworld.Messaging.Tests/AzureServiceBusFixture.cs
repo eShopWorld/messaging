@@ -35,8 +35,6 @@ namespace Eshopworld.Messaging.Tests
                                Environment.GetEnvironmentVariable(KeyVaultUriName, EnvironmentVariableTarget.User)) ??
                                Environment.GetEnvironmentVariable(KeyVaultUriName, EnvironmentVariableTarget.Process);
 
-            keyVaultUri = "https://esw-tooling-tests.vault.azure.net/";
-
             var tokenProvider = new AzureServiceTokenProvider();
             var config = new ConfigurationBuilder().AddAzureKeyVault(
                                                        keyVaultUri,
@@ -45,9 +43,6 @@ namespace Eshopworld.Messaging.Tests
                                                    .Build();
 
             config.Bind(ConfigSettings);
-            ConfigSettings.ListenOnlyServiceBusConnectionString =
-                "Endpoint=sb://esw-esp-integration.servicebus.windows.net/;SharedAccessKeyName=Listen;SharedAccessKey=UEkhFcRDihtWQBvuv5gycg7aP9qD5liXh8czlEdpR7o=";
-            ConfigSettings.ServiceBusConnectionString = "Endpoint=sb://esw-esp-integration.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=9rPnOtpqxCLTRmQng2eBb5LdaoZYyjx7/HyWzFZ3vwM=";
 
             var namespaceName = Regex.Match(ConfigSettings.ServiceBusConnectionString, @"Endpoint=sb:\/\/([^.]*)", RegexOptions.IgnoreCase).Groups[1].Value;
 

@@ -94,5 +94,19 @@ namespace Eshopworld.Messaging.Tests
             subscriptions.Count.Should().Be(1);
             subscriptions.SingleOrDefault(t => string.Equals(t.Name, subscriptionName, StringComparison.CurrentCultureIgnoreCase)).Should().NotBeNull();
         }
+
+        /// <summary>
+        /// Checks if a given topic exists to facilitate tests that scorch the namespace and check if the topic was properly created.
+        /// </summary>
+        /// <param name="sbNamespace">The <see cref="IServiceBusNamespace"/> that we are checking in.</param>
+        /// <param name="topicName">The topic name we are checking for</param>
+        /// <param name="subscriptionName">The name of the subscription that we are checking on the topic.</param>
+        public static void AssertSubscriptionDoNotExists(this IServiceBusNamespace sbNamespace, string topicName, string subscriptionName)
+        {
+            sbNamespace.Refresh();
+            var subscriptions = sbNamespace.Topics.GetByName(topicName).Subscriptions.List().ToList();
+
+            subscriptions.Should().NotBeNull().And.BeEmpty();
+        }
     }
 }

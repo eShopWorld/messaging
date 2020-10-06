@@ -45,6 +45,8 @@ namespace Eshopworld.Messaging
                 ? result
                 : throw new InvalidOperationException($"Messages/events for {topicName} haven't been setup properly yet");
 
+        private const int MinimumIdleDurationMinutes = 5;
+
         /// <summary>
         /// Initializes a new instance of <see cref="Messenger"/>.
         /// </summary>
@@ -96,13 +98,14 @@ namespace Eshopworld.Messaging
         /// <inheritdoc />
         public async Task Subscribe<T>(Action<T> callback, string subscriptionName, string topicName = null, int batchSize = 10, int? deleteOnIdleDurationInMinutes = null) where T : class
         {
+            CheckIdleDuration(deleteOnIdleDurationInMinutes);
             topicName ??= GetTypeName<T>();
             if (!MessageSubs.TryAdd(topicName, MessagesIn.OfType<T>().Subscribe(callback)))
             {
                 throw new InvalidOperationException("You already added a callback to this topic. Only one callback per topic is supported.");
             }
 
-            await ((TopicAdapter<T>)SetupMessageType<T>(batchSize, MessagingTransport.Topic, topicName)).StartReading(subscriptionName).ConfigureAwait(false);
+            await ((TopicAdapter<T>)SetupMessageType<T>(batchSize, MessagingTransport.Topic, topicName)).StartReading(subscriptionName, deleteOnIdleDurationInMinutes).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
@@ -270,5 +273,14 @@ namespace Eshopworld.Messaging
         }
 
         private static string GetTypeName<T>() => typeof(T).GetEntityName();
+
+        private static void CheckIdleDuration(int? deleteOnIdleDurationInMinutes)
+        {
+            if (!deleteOnIdleDurationInMinutes.HasValue) return;
+
+            if (deleteOnIdleDurationInMinutes < MinimumIdleDurationMinutes)
+                throw new ArgumentException("Idle duration for subscription must be at least 5 minutes",
+                    nameof(deleteOnIdleDurationInMinutes));
+        }
     }
 }

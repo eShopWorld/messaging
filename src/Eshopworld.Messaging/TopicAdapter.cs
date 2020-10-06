@@ -68,7 +68,7 @@ namespace Eshopworld.Messaging
             await RebuildReceiver().ConfigureAwait(false);
 
             AzureTopicSubscription = await (await GetRefreshedTopic().ConfigureAwait(false))
-                .CreateSubscriptionIfNotExists(subscriptionName)
+                .CreateSubscriptionIfNotExists(subscriptionName, deleteOnIdleDurationInMinutes)
                 .ConfigureAwait(false);
 
             LockInSeconds = AzureTopicSubscription.LockDurationInSeconds;

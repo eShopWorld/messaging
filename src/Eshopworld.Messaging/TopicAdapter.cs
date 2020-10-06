@@ -62,16 +62,17 @@ namespace Eshopworld.Messaging
         /// Starts pooling the queue in order to read messages in Peek Lock mode.
         /// </summary>
         /// <param name="subscriptionName">The name of the subscription that we want to read from.</param>
-        internal async Task StartReading(string subscriptionName)
+        /// <param name="deleteOnIdleDurationInMinutes">number of minutes for a subscription to be deleted when idle. If not provided then duration is infinite (TimeSpan.Max)</param>
+        internal async Task StartReading(string subscriptionName, int? deleteOnIdleDurationInMinutes = null)
         {
             await RebuildReceiver().ConfigureAwait(false);
 
             AzureTopicSubscription = await (await GetRefreshedTopic().ConfigureAwait(false))
-                                           .CreateSubscriptionIfNotExists(subscriptionName)
-                                           .ConfigureAwait(false);
+                .CreateSubscriptionIfNotExists(subscriptionName)
+                .ConfigureAwait(false);
 
             LockInSeconds = AzureTopicSubscription.LockDurationInSeconds;
-            LockTickInSeconds = (long)Math.Floor(LockInSeconds * 0.8); // renew at 80% to cope with load
+            LockTickInSeconds = (long) Math.Floor(LockInSeconds * 0.8); // renew at 80% to cope with load
 
             if (ReadTimer != null) return;
 

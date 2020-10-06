@@ -70,13 +70,9 @@ namespace Eshopworld.Messaging
         }
 
         /// <inheritdoc />
-        public Task Publish<T>(T @event)
-            where T : class => Publish(@event, GetTypeName<T>());
-
-        /// <inheritdoc />
-        public async Task Publish<T>(T @event, string topicName) where T : class
+        public async Task Publish<T>(T @event, string topicName = null) where T : class
         {
-            CheckTopicName(topicName);
+            topicName ??= GetTypeName<T>();
             if (!ServiceBusAdapters.ContainsKey(topicName))
             {
                 SetupMessageType<T>(10, MessagingTransport.Topic, topicName);
@@ -98,13 +94,9 @@ namespace Eshopworld.Messaging
         }
 
         /// <inheritdoc />
-        public Task Subscribe<T>(Action<T> callback, string subscriptionName, int batchSize = 10)
-            where T : class => Subscribe(callback, subscriptionName, GetTypeName<T>());
-
-        /// <inheritdoc />
-        public async Task Subscribe<T>(Action<T> callback, string subscriptionName, string topicName, int batchSize = 10) where T : class
+        public async Task Subscribe<T>(Action<T> callback, string subscriptionName, string topicName = null, int batchSize = 10, int? deleteOnIdleDurationInMinutes = null) where T : class
         {
-            CheckTopicName(topicName);
+            topicName ??= GetTypeName<T>();
             if (!MessageSubs.TryAdd(topicName, MessagesIn.OfType<T>().Subscribe(callback)))
             {
                 throw new InvalidOperationException("You already added a callback to this topic. Only one callback per topic is supported.");
@@ -114,10 +106,10 @@ namespace Eshopworld.Messaging
         }
 
         /// <inheritdoc />
-        public void CancelReceive<T>() where T : class => CancelReceive(GetTypeName<T>());
-
-        public void CancelReceive(string topicName)
+        public void CancelReceive<T>(string topicName= null) where T : class
         {
+            topicName ??= GetTypeName<T>();
+
             lock (Gate)
             {
                 GetQueueAdapterIfExists(topicName).StopReading();
@@ -146,47 +138,37 @@ namespace Eshopworld.Messaging
         }
 
         /// <inheritdoc />
-        public Task Lock<T>(T message) where T : class => Lock(message, GetTypeName<T>());
-
-        public async Task Lock<T>(T message, string topicName) where T : class
+        public async Task Lock<T>(T message, string topicName = null) where T : class
         {
-            CheckTopicName(topicName);
+            topicName ??= GetTypeName<T>();
             await GetQueueAdapterIfExists(topicName).Lock(message).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
-        public Task Complete<T>(T message) where T : class => Complete(message, GetTypeName<T>());
-
-        public async Task Complete<T>(T message, string topicName) where T : class
+        public async Task Complete<T>(T message, string topicName = null) where T : class
         {
-            CheckTopicName(topicName);
+            topicName ??= GetTypeName<T>();
             await GetQueueAdapterIfExists(topicName).Complete(message).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
-        public Task Abandon<T>(T message) where T : class => Abandon(message, GetTypeName<T>());
-
-        public async Task Abandon<T>(T message, string topicName) where T : class
+        public async Task Abandon<T>(T message, string topicName = null) where T : class
         {
-            CheckTopicName(topicName);
+            topicName ??= GetTypeName<T>();
             await GetQueueAdapterIfExists(topicName).Abandon(message).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
-        public Task Error<T>(T message) where T : class => Error(message, GetTypeName<T>());
-
-        public async Task Error<T>(T message, string topicName) where T : class
+        public async Task Error<T>(T message, string topicName = null) where T : class
         {
-            CheckTopicName(topicName);
+            topicName ??= GetTypeName<T>();
             await GetQueueAdapterIfExists(topicName).Error(message).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
-        public void SetBatchSize<T>(int batchSize) where T : class => SetBatchSize<T>(batchSize, GetTypeName<T>());
-
         public void SetBatchSize<T>(int batchSize, string topicName) where T : class
         {
-            CheckTopicName(topicName);
+            topicName ??= GetTypeName<T>();
             GetQueueAdapterIfExists(topicName).SetBatchSize(batchSize);
         }
 
@@ -288,10 +270,5 @@ namespace Eshopworld.Messaging
         }
 
         private static string GetTypeName<T>() => typeof(T).GetEntityName();
-
-        private static void CheckTopicName(string topicName)
-        {
-            if (string.IsNullOrEmpty(topicName)) throw new ArgumentException($"{nameof(topicName)} cannot be empty");
-        }
     }
 }

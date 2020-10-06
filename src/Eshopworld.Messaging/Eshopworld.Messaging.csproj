@@ -29,7 +29,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="eshopworld.core" Version="4.1.7" />
+    <PackageReference Include="eshopworld.core" Version="4.2.0" />
     <PackageReference Include="jetbrains.annotations" Version="2020.1.0" />
     <PackageReference Include="Microsoft.Azure.Management.Fluent" Version="1.34.0" />
     <PackageReference Include="microsoft.azure.servicebus" Version="4.1.4" />

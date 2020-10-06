@@ -12,7 +12,6 @@ using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Azure.Management.ServiceBus.Fluent;
-using Microsoft.Azure.ServiceBus.Core;
 using Microsoft.Azure.Services.AppAuthentication;
 using Microsoft.Rest;
 
@@ -216,7 +215,7 @@ namespace Eshopworld.Messaging
         /// This will create the <see cref="ServiceBusAdapter"/> but will not set it up for reading the queue.
         /// </summary>
         /// <typeparam name="T">The type of the message we are setting up.</typeparam>
-        /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the <see cref="MessageReceiver"/>.</param>
+        /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the <see cref="Microsoft.Azure.ServiceBus.Core.MessageReceiver"/>.</param>
         /// <param name="transport">The type of the transport to setup</param>
         /// <param name="topicName">Topic name to be used to create the topic. If not provided the type <typeparam name="T"/> will be used</param>
         /// <returns>The message queue adapter.</returns>

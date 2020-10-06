@@ -62,12 +62,13 @@ namespace Eshopworld.Messaging
         public async Task Send<T>(T message)
             where T : class
         {
-            if (!ServiceBusAdapters.ContainsKey(GetTypeName<T>()))
+            var typeName = GetTypeName<T>();
+            if (!ServiceBusAdapters.ContainsKey(typeName))
             {
-                SetupMessageType<T>(10, MessagingTransport.Queue, GetTypeName<T>());
+                SetupMessageType<T>(10, MessagingTransport.Queue, typeName);
             }
 
-            await ((QueueAdapter<T>)ServiceBusAdapters[GetTypeName<T>()]).Send(message).ConfigureAwait(false);
+            await ((QueueAdapter<T>)ServiceBusAdapters[typeName]).Send(message).ConfigureAwait(false);
         }
 
         /// <inheritdoc />

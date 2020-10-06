@@ -44,6 +44,7 @@ public class MessengerQueueTest
         using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
         {
             msn.Receive<TestMessage>(_ => { });
+            msn.CancelReceive<TestMessage>();
             ServiceBusFixture.ServiceBusNamespace.AssertSingleQueueExists(typeof(TestMessage));
         }
     }
@@ -69,8 +70,9 @@ public class MessengerQueueTest
 
             var receiver = new MessageReceiver(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, typeof(TestMessage).GetEntityName(), ReceiveMode.ReceiveAndDelete, null, sendCount);
             var rMessages = (await receiver.ReadBatchAsync<TestMessage>(sendCount)).ToList();
-
+            
             rMessages.Should().BeEquivalentTo(messages);
+
         }
     }
 

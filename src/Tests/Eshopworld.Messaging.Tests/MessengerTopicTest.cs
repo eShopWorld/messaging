@@ -40,7 +40,7 @@ public class MessengerTopicTest
     public async Task Test_SendWithTopic_CreatesTheTopic()
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
-        var topicName = Lorem.GetWord();
+        var topicName = nameof(Test_SendWithTopic_CreatesTheTopic).Replace("_", "");
 
         using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
         {
@@ -80,7 +80,6 @@ public class MessengerTopicTest
             }
 
         }
-
     }
 
     [Fact, IsLayer1]
@@ -92,6 +91,7 @@ public class MessengerTopicTest
         {
             var subscriptionName = nameof(Test_ReceiveCreatesTheTopic).Replace("_", "");
             await msn.Subscribe<TestMessage>(_ => { }, subscriptionName);
+            msn.CancelReceive<TestMessage>();
             ServiceBusFixture.ServiceBusNamespace.AssertSingleTopicSubscriptionExists(typeof(TestMessage), subscriptionName);
         }
     }
@@ -100,12 +100,14 @@ public class MessengerTopicTest
     public async Task Test_ReceiveWithTopicName_CreatesTheTopic()
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
-        var topicName = Lorem.GetWord();
+        var topicName = nameof(Test_ReceiveWithTopicName_CreatesTheTopic).Replace("_", "");
+        topicName = $"{topicName}_Topic";
 
         using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
         {
             var subscriptionName = nameof(Test_ReceiveWithTopicName_CreatesTheTopic).Replace("_", "");
             await msn.Subscribe<TestMessage>(_ => { }, subscriptionName, topicName);
+            msn.CancelReceive(topicName);
             ServiceBusFixture.ServiceBusNamespace.AssertSingleTopicSubscriptionExists(topicName, subscriptionName);
         }
     }

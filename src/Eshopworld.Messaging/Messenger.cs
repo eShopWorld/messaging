@@ -12,7 +12,6 @@ using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Azure.Management.ServiceBus.Fluent;
-using Microsoft.Azure.ServiceBus.Core;
 using Microsoft.Azure.Services.AppAuthentication;
 using Microsoft.Rest;
 
@@ -35,15 +34,17 @@ namespace Eshopworld.Messaging
 
         internal readonly ISubject<object> MessagesIn = new Subject<object>();
 
-        internal ConcurrentDictionary<Type, IDisposable> MessageSubs = new ConcurrentDictionary<Type, IDisposable>();
-        internal ConcurrentDictionary<Type, ServiceBusAdapter> ServiceBusAdapters = new ConcurrentDictionary<Type, ServiceBusAdapter>();
+        internal ConcurrentDictionary<string, IDisposable> MessageSubs = new ConcurrentDictionary<string, IDisposable>();
+        internal ConcurrentDictionary<string, ServiceBusAdapter> ServiceBusAdapters = new ConcurrentDictionary<string, ServiceBusAdapter>();
 
         internal IServiceBusNamespace AzureServiceBusNamespace;
 
-        internal ServiceBusAdapter<T> GetQueueAdapterIfExists<T>() where T : class =>
-            ServiceBusAdapters.TryGetValue(typeof(T), out var result)
-                ? (ServiceBusAdapter<T>)result
-                : throw new InvalidOperationException($"Messages/events of type {typeof(T).FullName} haven't been setup properly yet");
+        internal ServiceBusAdapter GetQueueAdapterIfExists(string topicName) =>
+            ServiceBusAdapters.TryGetValue(topicName, out var result)
+                ? result
+                : throw new InvalidOperationException($"Messages/events for {topicName} haven't been setup properly yet");
+
+        private const int MinimumIdleDurationMinutes = 5;
 
         /// <summary>
         /// Initializes a new instance of <see cref="Messenger"/>.
@@ -61,62 +62,66 @@ namespace Eshopworld.Messaging
         public async Task Send<T>(T message)
             where T : class
         {
-            if (!ServiceBusAdapters.ContainsKey(typeof(T)))
+            var typeName = GetTypeName<T>();
+            if (!ServiceBusAdapters.ContainsKey(typeName))
             {
-                SetupMessageType<T>(10, MessagingTransport.Queue);
+                SetupMessageType<T>(10, MessagingTransport.Queue, typeName);
             }
 
-            await ((QueueAdapter<T>)ServiceBusAdapters[typeof(T)]).Send(message).ConfigureAwait(false);
+            await ((QueueAdapter<T>)ServiceBusAdapters[typeName]).Send(message).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
-        public async Task Publish<T>(T @event)
-            where T : class
+        public async Task Publish<T>(T @event, string topicName = null) where T : class
         {
-            if (!ServiceBusAdapters.ContainsKey(typeof(T)))
+            topicName ??= GetTypeName<T>();
+            if (!ServiceBusAdapters.ContainsKey(topicName))
             {
-                SetupMessageType<T>(10, MessagingTransport.Topic);
+                SetupMessageType<T>(10, MessagingTransport.Topic, topicName);
             }
-
-            await ((TopicAdapter<T>)ServiceBusAdapters[typeof(T)]).Send(@event).ConfigureAwait(false);
+            
+            await ((TopicAdapter<T>)ServiceBusAdapters[topicName]).Send(@event).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
         public void Receive<T>(Action<T> callback, int batchSize = 10)
             where T : class
         {
-            if (!MessageSubs.TryAdd(typeof(T), MessagesIn.OfType<T>().Subscribe(callback)))
+            var typeName = GetTypeName<T>();
+            if (!MessageSubs.TryAdd(typeName, MessagesIn.OfType<T>().Subscribe(callback)))
             {
                 throw new InvalidOperationException("You already added a callback to this message type. Only one callback per type is supported.");
             }
 
-            ((QueueAdapter<T>)SetupMessageType<T>(batchSize, MessagingTransport.Queue)).StartReading();
+            ((QueueAdapter<T>)SetupMessageType<T>(batchSize, MessagingTransport.Queue, typeName)).StartReading();
         }
 
         /// <inheritdoc />
-        public async Task Subscribe<T>(Action<T> callback, string subscriptionName, int batchSize = 10)
-            where T : class
+        public async Task Subscribe<T>(Action<T> callback, string subscriptionName, string topicName = null, int batchSize = 10, int? deleteOnIdleDurationInMinutes = null) where T : class
         {
-            if (!MessageSubs.TryAdd(typeof(T), MessagesIn.OfType<T>().Subscribe(callback)))
+            CheckIdleDuration(deleteOnIdleDurationInMinutes);
+            topicName ??= GetTypeName<T>();
+            if (!MessageSubs.TryAdd(topicName, MessagesIn.OfType<T>().Subscribe(callback)))
             {
-                throw new InvalidOperationException("You already added a callback to this message type. Only one callback per type is supported.");
+                throw new InvalidOperationException("You already added a callback to this topic. Only one callback per topic is supported.");
             }
 
-            await ((TopicAdapter<T>)SetupMessageType<T>(batchSize, MessagingTransport.Topic)).StartReading(subscriptionName).ConfigureAwait(false);
+            await ((TopicAdapter<T>)SetupMessageType<T>(batchSize, MessagingTransport.Topic, topicName)).StartReading(subscriptionName, deleteOnIdleDurationInMinutes).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
-        public void CancelReceive<T>()
-            where T : class
+        public void CancelReceive<T>(string topicName= null) where T : class
         {
+            topicName ??= GetTypeName<T>();
+
             lock (Gate)
             {
-                GetQueueAdapterIfExists<T>().StopReading();
+                GetQueueAdapterIfExists(topicName).StopReading();
 
-                if (MessageSubs.ContainsKey(typeof(T))) // if reactive messenger is used, the subscriptions are handled by the package client
+                if (MessageSubs.ContainsKey(topicName)) // if reactive messenger is used, the subscriptions are handled by the package client
                 {
-                    MessageSubs[typeof(T)].Dispose();
-                    MessageSubs.TryRemove(typeof(T), out _);
+                    MessageSubs[topicName].Dispose();
+                    MessageSubs.TryRemove(topicName, out _);
                 }
             }
         }
@@ -124,31 +129,52 @@ namespace Eshopworld.Messaging
         /// <inheritdoc />
         public IObservable<T> GetMessageObservable<T>(int batchSize = 10) where T : class // GetMessageObservable || GetEventObservable
         {
-            ((QueueAdapter<T>)SetupMessageType<T>(batchSize, MessagingTransport.Queue)).StartReading();
+            ((QueueAdapter<T>)SetupMessageType<T>(batchSize, MessagingTransport.Queue, GetTypeName<T>())).StartReading();
             return MessagesIn.OfType<T>().AsObservable();
         }
 
         /// <inheritdoc />
         public async Task<IObservable<T>> GetEventObservable<T>(string subscriptionName, int batchSize = 10) where T : class
         {
-            await ((TopicAdapter<T>)SetupMessageType<T>(batchSize, MessagingTransport.Topic)).StartReading(subscriptionName).ConfigureAwait(false);
+            await ((TopicAdapter<T>) SetupMessageType<T>(batchSize, MessagingTransport.Topic, GetTypeName<T>()))
+                .StartReading(subscriptionName).ConfigureAwait(false);
             return MessagesIn.OfType<T>().AsObservable();
         }
 
         /// <inheritdoc />
-        public async Task Lock<T>(T message) where T : class => await GetQueueAdapterIfExists<T>().Lock(message).ConfigureAwait(false);
+        public async Task Lock<T>(T message, string topicName = null) where T : class
+        {
+            topicName ??= GetTypeName<T>();
+            await GetQueueAdapterIfExists(topicName).Lock(message).ConfigureAwait(false);
+        }
 
         /// <inheritdoc />
-        public async Task Complete<T>(T message) where T : class => await GetQueueAdapterIfExists<T>().Complete(message).ConfigureAwait(false);
+        public async Task Complete<T>(T message, string topicName = null) where T : class
+        {
+            topicName ??= GetTypeName<T>();
+            await GetQueueAdapterIfExists(topicName).Complete(message).ConfigureAwait(false);
+        }
 
         /// <inheritdoc />
-        public async Task Abandon<T>(T message) where T : class => await GetQueueAdapterIfExists<T>().Abandon(message).ConfigureAwait(false);
+        public async Task Abandon<T>(T message, string topicName = null) where T : class
+        {
+            topicName ??= GetTypeName<T>();
+            await GetQueueAdapterIfExists(topicName).Abandon(message).ConfigureAwait(false);
+        }
 
         /// <inheritdoc />
-        public async Task Error<T>(T message) where T : class => await GetQueueAdapterIfExists<T>().Error(message).ConfigureAwait(false);
+        public async Task Error<T>(T message, string topicName = null) where T : class
+        {
+            topicName ??= GetTypeName<T>();
+            await GetQueueAdapterIfExists(topicName).Error(message).ConfigureAwait(false);
+        }
 
         /// <inheritdoc />
-        public void SetBatchSize<T>(int batchSize) where T : class => GetQueueAdapterIfExists<T>().SetBatchSize(batchSize);
+        public void SetBatchSize<T>(int batchSize, string topicName) where T : class
+        {
+            topicName ??= GetTypeName<T>();
+            GetQueueAdapterIfExists(topicName).SetBatchSize(batchSize);
+        }
 
         /// <summary>
         /// Attempts to refresh the stored <see cref="IServiceBusNamespace"/> fluent construct.
@@ -191,35 +217,41 @@ namespace Eshopworld.Messaging
         /// This will create the <see cref="ServiceBusAdapter"/> but will not set it up for reading the queue.
         /// </summary>
         /// <typeparam name="T">The type of the message we are setting up.</typeparam>
-        /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the <see cref="MessageReceiver"/>.</param>
+        /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the <see cref="Microsoft.Azure.ServiceBus.Core.MessageReceiver"/>.</param>
         /// <param name="transport">The type of the transport to setup</param>
+        /// <param name="topicName">Topic name to be used to create the topic. If not provided the type <typeparam name="T"/> will be used</param>
         /// <returns>The message queue adapter.</returns>
-        internal ServiceBusAdapter<T> SetupMessageType<T>(int batchSize, MessagingTransport transport) where T : class
+        internal ServiceBusAdapter<T> SetupMessageType<T>(int batchSize, MessagingTransport transport, string topicName)
+            where T : class
         {
             ServiceBusAdapter adapter = null;
 
-            if (!ServiceBusAdapters.ContainsKey(typeof(T)))
+            if (!ServiceBusAdapters.ContainsKey(topicName))
             {
                 switch (transport)
                 {
                     case MessagingTransport.Queue:
-                        adapter = new QueueAdapter<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver(), batchSize, this);
+                        adapter = new QueueAdapter<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver(),
+                            batchSize, this);
                         break;
                     case MessagingTransport.Topic:
-                        adapter = new TopicAdapter<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver(), batchSize, this);
+                        adapter = new TopicAdapter<T>(ConnectionString, SubscriptionId, MessagesIn.AsObserver(),
+                            batchSize, this, topicName);
                         break;
                     default:
-                        throw new InvalidOperationException($"The {nameof(MessagingTransport)} was extended and the use case on the {nameof(SetupMessageType)} switch wasn't.");
+                        throw new InvalidOperationException(
+                            $"The {nameof(MessagingTransport)} was extended and the use case on the {nameof(SetupMessageType)} switch wasn't.");
                 }
 
-                if (!ServiceBusAdapters.TryAdd(typeof(T), adapter))
+                if (!ServiceBusAdapters.TryAdd(topicName, adapter))
                 {
                     adapter.Dispose();
                     adapter = null;
                 }
             }
 
-            return (ServiceBusAdapter<T>)adapter ?? (ServiceBusAdapter<T>)ServiceBusAdapters[typeof(T)];
+            return (ServiceBusAdapter<T>) adapter ??
+                   (ServiceBusAdapter<T>) ServiceBusAdapters[topicName];
         }
 
         /// <inheritdoc />
@@ -239,6 +271,17 @@ namespace Eshopworld.Messaging
                 ServiceBusAdapters.Release();
                 ServiceBusAdapters = null;
             }
+        }
+
+        private static string GetTypeName<T>() => typeof(T).GetEntityName();
+
+        private static void CheckIdleDuration(int? deleteOnIdleDurationInMinutes)
+        {
+            if (!deleteOnIdleDurationInMinutes.HasValue) return;
+
+            if (deleteOnIdleDurationInMinutes < MinimumIdleDurationMinutes)
+                throw new ArgumentException("Idle duration for subscription must be at least 5 minutes",
+                    nameof(deleteOnIdleDurationInMinutes));
         }
     }
 }

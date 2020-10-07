@@ -44,6 +44,7 @@ public class MessengerQueueTest
         using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
         {
             msn.Receive<TestMessage>(_ => { });
+            msn.CancelReceive<TestMessage>();
             ServiceBusFixture.ServiceBusNamespace.AssertSingleQueueExists(typeof(TestMessage));
         }
     }
@@ -69,8 +70,9 @@ public class MessengerQueueTest
 
             var receiver = new MessageReceiver(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, typeof(TestMessage).GetEntityName(), ReceiveMode.ReceiveAndDelete, null, sendCount);
             var rMessages = (await receiver.ReadBatchAsync<TestMessage>(sendCount)).ToList();
-
+            
             rMessages.Should().BeEquivalentTo(messages);
+
         }
     }
 
@@ -162,8 +164,8 @@ public class MessengerQueueTest
             }
             catch (TaskCanceledException) { /* soak the kill switch */ }
 
-            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage)]).Messages.Should().BeEmpty();
-            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage)]).LockTimers.Should().BeEmpty();
+            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage).GetEntityName()]).Messages.Should().BeEmpty();
+            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage).GetEntityName()]).LockTimers.Should().BeEmpty();
         }
     }
 
@@ -193,8 +195,8 @@ public class MessengerQueueTest
             }
             catch (TaskCanceledException) { /* soak the kill switch */ }
 
-            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage)]).Messages.Should().BeEmpty();
-            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage)]).LockTimers.Should().BeEmpty();
+            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage).GetEntityName()]).Messages.Should().BeEmpty();
+            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage).GetEntityName()]).LockTimers.Should().BeEmpty();
         }
     }
 
@@ -231,8 +233,8 @@ public class MessengerQueueTest
             rMessage.Should().NotBeNull();
             rMessage.Should().BeEquivalentTo(message);
 
-            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage)]).Messages.Should().BeEmpty();
-            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage)]).LockTimers.Should().BeEmpty();
+            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage).GetEntityName()]).Messages.Should().BeEmpty();
+            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage).GetEntityName()]).LockTimers.Should().BeEmpty();
         }
     }
 

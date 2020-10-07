@@ -20,7 +20,7 @@ namespace Eshopworld.Messaging
     {
         internal readonly string ConnectionString;
         internal readonly Messenger Messenger;
-        internal readonly Type TopicType;
+        internal readonly string TopicName;
         internal ITopic AzureTopic;
         internal TopicClient Sender;
         internal ISubscription AzureTopicSubscription;
@@ -33,43 +33,47 @@ namespace Eshopworld.Messaging
         /// <param name="connectionString">The Azure Service Bus connection string.</param>
         /// <param name="subscriptionId">The ID of the subscription where the service bus namespace lives.</param>
         /// <param name="messagesIn">The <see cref="IObserver{IMessage}"/> used to push received messages into the pipeline.</param>
+        /// <param name="topicName">The topic name to use</param>
         /// <param name="batchSize">The size of the batch when reading for a queue - used as the pre-fetch parameter of the </param>
         /// <param name="messenger">The <see cref="Messenger"/> instance that created this adapter.</param>
-        public TopicAdapter([NotNull]string connectionString, [NotNull]string subscriptionId, [NotNull]IObserver<T> messagesIn, int batchSize, Messenger messenger)
+        public TopicAdapter(
+            [NotNull] string connectionString,
+            [NotNull] string subscriptionId,
+            [NotNull] IObserver<T> messagesIn,
+            int batchSize,
+            Messenger messenger,
+            string topicName = null)
             : base(messagesIn, batchSize)
         {
+            topicName = GetSafeTopicName(topicName);
+
             ConnectionString = connectionString;
             Messenger = messenger;
-
-            TopicType = typeof(T);
-
-            if (TopicType.GetEntityName()?.Length > 260) // SB quota: Entity path max length
-            {
-                throw new InvalidOperationException(
-                    $@"You can't create queues for the type {TopicType.GetEntityName()} because the full name (namespace + name) exceeds 260 characters.
-I suggest you reduce the size of the namespace: '{TopicType.Namespace}'.");
-            }
-
+            TopicName = topicName;
             AzureTopic = Messenger.GetRefreshedServiceBusNamespace().ConfigureAwait(false).GetAwaiter().GetResult()
-                                  .CreateTopicIfNotExists(TopicType.GetEntityName()).ConfigureAwait(false).GetAwaiter().GetResult();
-      
+                .CreateTopicIfNotExists(TopicName).ConfigureAwait(false).GetAwaiter().GetResult();
+
             RebuildSender().ConfigureAwait(false).GetAwaiter().GetResult();
         }
+
+        private static string GetSafeTopicName(string topicName) =>
+            string.IsNullOrEmpty(topicName) ? CheckTopicType() : CheckTopicName(topicName);
 
         /// <summary>
         /// Starts pooling the queue in order to read messages in Peek Lock mode.
         /// </summary>
         /// <param name="subscriptionName">The name of the subscription that we want to read from.</param>
-        internal async Task StartReading(string subscriptionName)
+        /// <param name="deleteOnIdleDurationInMinutes">number of minutes for a subscription to be deleted when idle. If not provided then duration is infinite (TimeSpan.Max)</param>
+        internal async Task StartReading(string subscriptionName, int? deleteOnIdleDurationInMinutes = null)
         {
             await RebuildReceiver().ConfigureAwait(false);
 
             AzureTopicSubscription = await (await GetRefreshedTopic().ConfigureAwait(false))
-                                           .CreateSubscriptionIfNotExists(subscriptionName)
-                                           .ConfigureAwait(false);
+                .CreateSubscriptionIfNotExists(subscriptionName, deleteOnIdleDurationInMinutes)
+                .ConfigureAwait(false);
 
             LockInSeconds = AzureTopicSubscription.LockDurationInSeconds;
-            LockTickInSeconds = (long)Math.Floor(LockInSeconds * 0.8); // renew at 80% to cope with load
+            LockTickInSeconds = (long) Math.Floor(LockInSeconds * 0.8); // renew at 80% to cope with load
 
             if (ReadTimer != null) return;
 
@@ -136,7 +140,7 @@ I suggest you reduce the size of the namespace: '{TopicType.Namespace}'.");
 
             AzureTopic = await (await Messenger.GetRefreshedServiceBusNamespace()
                                                .ConfigureAwait(false))
-                               .CreateTopicIfNotExists(TopicType.GetEntityName())
+                               .CreateTopicIfNotExists(TopicName)
                                .ConfigureAwait(false);
 
             return AzureTopic;
@@ -179,6 +183,32 @@ I suggest you reduce the size of the namespace: '{TopicType.Namespace}'.");
             }
 
             base.Dispose(disposing);
+        }
+
+        private static string CheckTopicName(string topicName)
+        {
+            if (topicName.Length > 260) // SB quota: Entity path max length
+            {
+                throw new InvalidOperationException(
+                    $@"You can't create queues for the topic name {topicName} because it exceeds 260 characters.");
+            }
+
+            return topicName;
+        }
+
+        private static string CheckTopicType()
+        {
+            var topicType = typeof(T);
+            var topicName = topicType.GetEntityName();
+
+            if (topicName.Length > 260) // SB quota: Entity path max length
+            {
+                throw new InvalidOperationException(
+                    $@"You can't create queues for the type {topicName} because the full name (namespace + name) exceeds 260 characters.
+I suggest you reduce the size of the namespace: '{topicType.Namespace}'.");
+            }
+
+            return topicName;
         }
     }
 }

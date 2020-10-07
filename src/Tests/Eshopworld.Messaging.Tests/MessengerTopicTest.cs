@@ -37,6 +37,19 @@ public class MessengerTopicTest
     }
 
     [Fact, IsLayer1]
+    public async Task Test_SendWithTopic_CreatesTheTopic()
+    {
+        await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
+        var topicName = nameof(Test_SendWithTopic_CreatesTheTopic).Replace("_", "");
+
+        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
+        {
+            await msn.Publish(new TestMessage(), topicName);
+            ServiceBusFixture.ServiceBusNamespace.AssertSingleTopicExists(topicName);
+        }
+    }
+
+    [Fact, IsLayer1]
     public async Task Test_SendFailureCorrectRebuildSequence()
     {
         await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
@@ -67,7 +80,6 @@ public class MessengerTopicTest
             }
 
         }
-
     }
 
     [Fact, IsLayer1]
@@ -79,14 +91,64 @@ public class MessengerTopicTest
         {
             var subscriptionName = nameof(Test_ReceiveCreatesTheTopic).Replace("_", "");
             await msn.Subscribe<TestMessage>(_ => { }, subscriptionName);
+            msn.CancelReceive<TestMessage>();
             ServiceBusFixture.ServiceBusNamespace.AssertSingleTopicSubscriptionExists(typeof(TestMessage), subscriptionName);
         }
     }
 
-    [EswEventName("test.prova.nino")]
-    class TestNinoEvent : DomainEvent
+    [Fact, IsLayer1]
+    public async Task Test_ReceiveWithTopicName_CreatesTheTopic()
     {
+        await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
+        var topicName = nameof(Test_ReceiveWithTopicName_CreatesTheTopic).Replace("_", "");
+        topicName = $"{topicName}_Topic";
 
+        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
+        {
+            var subscriptionName = nameof(Test_ReceiveWithTopicName_CreatesTheTopic).Replace("_", "");
+            await msn.Subscribe<TestMessage>(_ => { }, subscriptionName, topicName);
+            msn.CancelReceive<TestMessage>(topicName);
+            ServiceBusFixture.ServiceBusNamespace.AssertSingleTopicSubscriptionExists(topicName, subscriptionName);
+        }
+    }
+
+    [Theory, IsLayer1]
+    [InlineData(-2)]
+    [InlineData(0)]
+    [InlineData(4)]
+    public async Task Test_ReceiveWithTopicNameAndIdleTime_WhenLessThan5Min_ThrowsException(int minutes)
+    {
+        await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
+        
+        var topicName = nameof(Test_ReceiveWithTopicNameAndIdleTime_WhenLessThan5Min_ThrowsException).Replace("_", "");
+
+        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
+        {
+            var subscriptionName = $"IdleTopicSubscription{minutes}";
+            Func<Task> action = async () => await msn.Subscribe<TestMessage>(_ => { }, subscriptionName, topicName,
+                deleteOnIdleDurationInMinutes: minutes);
+            action.Should().Throw<ArgumentException>().Which.ParamName.Should()
+                .BeEquivalentTo("deleteOnIdleDurationInMinutes");
+        }
+    }
+
+    [Fact, IsLayer1]
+    public async Task Test_ReceiveWithTopicNameAndIdleTime_CreatesTheTopicAndRemovesAfterIdle()
+    {
+        await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
+        
+        const string topicName = "IdleTopicTest";
+        const int idleTimeMin = 5;
+
+        using (IDoFullMessaging msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
+        {
+            const string subscriptionName = "IdleTopicSubscription";
+            await msn.Subscribe<TestMessage>(_ => { }, subscriptionName, topicName, deleteOnIdleDurationInMinutes: idleTimeMin);
+            msn.CancelReceive<TestMessage>(topicName);
+            ServiceBusFixture.ServiceBusNamespace.AssertSingleTopicSubscriptionExists(topicName, subscriptionName);
+            await Task.Delay(TimeSpan.FromMinutes(6));
+            ServiceBusFixture.ServiceBusNamespace.AssertSubscriptionDoNotExists(topicName, subscriptionName);
+        }
     }
 
     [Theory, IsLayer1]
@@ -217,5 +279,4 @@ public class MessengerTopicTest
         subscriptionAfter.Should().NotBeNull();
         subscriptionAfter.Name.Should().Be(subscriptionName.ToLowerInvariant());
     }
-
 }

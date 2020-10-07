@@ -77,18 +77,23 @@ namespace Eshopworld.Messaging
         /// </summary>
         /// <param name="topic">The <see cref="ITopic"/> that we are subscribing to.</param>
         /// <param name="name">The name of the subscription we are doing on the <see cref="ITopic"/>.</param>
+        /// <param name="deleteOnIdleDurationInMinutes">number of minutes for a subscription to be deleted when idle. If not provided then duration is infinite (TimeSpan.Max)</param>
         /// <returns>The <see cref="ISubscription"/> entity object that references the subscription.</returns>
-        public static async Task<ISubscription> CreateSubscriptionIfNotExists(this ITopic topic, string name)
+        public static async Task<ISubscription> CreateSubscriptionIfNotExists(this ITopic topic, string name, int? deleteOnIdleDurationInMinutes = null)
         {
             var subscription = await topic.GetSubscriptionByNameAsync(name);
             if (subscription != null) return subscription;
 
-            return await topic.Subscriptions
-                   .Define(name.ToLowerInvariant())
-                   .WithMessageLockDurationInSeconds(60)
-                   .WithExpiredMessageMovedToDeadLetterSubscription()
-                   .WithMessageMovedToDeadLetterSubscriptionOnMaxDeliveryCount(10)
-                   .CreateAsync();
+            var builder = topic.Subscriptions
+                .Define(name.ToLowerInvariant())
+                .WithMessageLockDurationInSeconds(60)
+                .WithExpiredMessageMovedToDeadLetterSubscription()
+                .WithMessageMovedToDeadLetterSubscriptionOnMaxDeliveryCount(10);
+
+            if (deleteOnIdleDurationInMinutes.HasValue)
+                builder.WithDeleteOnIdleDurationInMinutes(deleteOnIdleDurationInMinutes.Value);
+
+            return await builder.CreateAsync();
 
             // No error handling is required for race conditions creating topic subscriptions - when the create is called, if
             // already exists, the existing subscription is returned with the create call.  Different behaviour from the creation

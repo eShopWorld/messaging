@@ -42,21 +42,22 @@ namespace Eshopworld.Messaging
             [NotNull] IObserver<T> messagesIn,
             int batchSize,
             Messenger messenger,
-            string topicName = null) 
+            string topicName = null)
             : base(messagesIn, batchSize)
         {
-
-            topicName ??= CheckTopicType();
-            CheckTopicName(topicName);
+            topicName = GetSafeTopicName(topicName);
 
             ConnectionString = connectionString;
             Messenger = messenger;
             TopicName = topicName;
             AzureTopic = Messenger.GetRefreshedServiceBusNamespace().ConfigureAwait(false).GetAwaiter().GetResult()
                 .CreateTopicIfNotExists(TopicName).ConfigureAwait(false).GetAwaiter().GetResult();
-      
+
             RebuildSender().ConfigureAwait(false).GetAwaiter().GetResult();
         }
+
+        private static string GetSafeTopicName(string topicName) =>
+            string.IsNullOrEmpty(topicName) ? CheckTopicType() : CheckTopicName(topicName);
 
         /// <summary>
         /// Starts pooling the queue in order to read messages in Peek Lock mode.
@@ -184,13 +185,15 @@ namespace Eshopworld.Messaging
             base.Dispose(disposing);
         }
 
-        private static void CheckTopicName(string topicName)
+        private static string CheckTopicName(string topicName)
         {
             if (topicName.Length > 260) // SB quota: Entity path max length
             {
                 throw new InvalidOperationException(
                     $@"You can't create queues for the topic name {topicName} because it exceeds 260 characters.");
             }
+
+            return topicName;
         }
 
         private static string CheckTopicType()

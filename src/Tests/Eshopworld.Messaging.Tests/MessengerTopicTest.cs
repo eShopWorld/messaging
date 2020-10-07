@@ -10,7 +10,6 @@ using Eshopworld.Tests.Core;
 using FluentAssertions;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.ServiceBus.Core;
-using Moq;
 using Xunit;
 
 // ReSharper disable once CheckNamespace

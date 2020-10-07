@@ -87,12 +87,13 @@ namespace Eshopworld.Messaging
         public void Receive<T>(Action<T> callback, int batchSize = 10)
             where T : class
         {
-            if (!MessageSubs.TryAdd(GetTypeName<T>(), MessagesIn.OfType<T>().Subscribe(callback)))
+            var typeName = GetTypeName<T>();
+            if (!MessageSubs.TryAdd(typeName, MessagesIn.OfType<T>().Subscribe(callback)))
             {
                 throw new InvalidOperationException("You already added a callback to this message type. Only one callback per type is supported.");
             }
 
-            ((QueueAdapter<T>)SetupMessageType<T>(batchSize, MessagingTransport.Queue, GetTypeName<T>())).StartReading();
+            ((QueueAdapter<T>)SetupMessageType<T>(batchSize, MessagingTransport.Queue, typeName)).StartReading();
         }
 
         /// <inheritdoc />

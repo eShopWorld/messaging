@@ -107,7 +107,7 @@ public class MessengerTopicTest
         {
             var subscriptionName = nameof(Test_ReceiveWithTopicName_CreatesTheTopic).Replace("_", "");
             await msn.Subscribe<TestMessage>(_ => { }, subscriptionName, topicName);
-            msn.CancelReceive<TestMessage>(topicName);
+            msn.CancelReceive(topicName);
             ServiceBusFixture.ServiceBusNamespace.AssertSingleTopicSubscriptionExists(topicName, subscriptionName);
         }
     }
@@ -144,7 +144,7 @@ public class MessengerTopicTest
         {
             const string subscriptionName = "IdleTopicSubscription";
             await msn.Subscribe<TestMessage>(_ => { }, subscriptionName, topicName, deleteOnIdleDurationInMinutes: idleTimeMin);
-            msn.CancelReceive<TestMessage>(topicName);
+            msn.CancelReceive(topicName);
             ServiceBusFixture.ServiceBusNamespace.AssertSingleTopicSubscriptionExists(topicName, subscriptionName);
             await Task.Delay(TimeSpan.FromMinutes(6));
             ServiceBusFixture.ServiceBusNamespace.AssertSubscriptionDoNotExists(topicName, subscriptionName);

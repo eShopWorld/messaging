@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     
-    <Version>2.1.6</Version>
-    <PackageReleaseNotes>Fix broken Messenger interface</PackageReleaseNotes>
+    <Version>2.1.7</Version>
+    <PackageReleaseNotes>Fix crash on message lock</PackageReleaseNotes>
 
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>

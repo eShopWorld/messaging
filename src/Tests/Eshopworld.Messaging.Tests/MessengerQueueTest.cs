@@ -187,7 +187,7 @@ public class MessengerQueueTest
                 sendTasks.Add(sendTask);
             }
 
-            var messageCount = 0;
+            int messageCount = 0;
 
             msn.Receive<TestMessage>(
                 async m =>
@@ -197,7 +197,7 @@ public class MessengerQueueTest
                         await msn.Lock(m);
                         await Task.Delay(TimeSpan.FromSeconds(5), ts.Token);
                         await msn.Complete(m);
-                        messageCount++;
+                        Interlocked.Increment(ref messageCount);
                         ts.Cancel(); // kill switch
                     }
                     catch { }

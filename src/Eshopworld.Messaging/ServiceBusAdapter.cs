@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
@@ -17,8 +18,8 @@ namespace Eshopworld.Messaging
     internal abstract class ServiceBusAdapter<T> : ServiceBusAdapter
         where T : class
     {
-        internal readonly IDictionary<T, Message> Messages = new Dictionary<T, Message>(ObjectReferenceEqualityComparer<T>.Default);
-        internal readonly IDictionary<T, Timer> LockTimers = new Dictionary<T, Timer>(ObjectReferenceEqualityComparer<T>.Default);
+        internal readonly IDictionary<T, Message> Messages = new ConcurrentDictionary<T, Message>(ObjectReferenceEqualityComparer<T>.Default);
+        internal readonly IDictionary<T, Timer> LockTimers = new ConcurrentDictionary<T, Timer>(ObjectReferenceEqualityComparer<T>.Default);
         internal readonly IObserver<T> MessagesIn;
         internal readonly bool RawMessages;
 

@@ -10,7 +10,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Nito.AsyncEx;
 using Xunit;
+using Xunit.Sdk;
 
 // ReSharper disable once CheckNamespace
 // ReSharper disable AccessToDisposedClosure
@@ -164,6 +166,52 @@ public class MessengerQueueTest
             }
             catch (TaskCanceledException) { /* soak the kill switch */ }
 
+            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage).GetEntityName()]).Messages.Should().BeEmpty();
+            ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage).GetEntityName()]).LockTimers.Should().BeEmpty();
+        }
+    }
+
+    [Fact, IsLayer1]
+    public async Task Test_Concurrency_MessageFlow()
+    {
+        await ServiceBusFixture.ServiceBusNamespace.ScorchNamespace();
+
+        using (var ts = new CancellationTokenSource())
+        using (var msn = new Messenger(ServiceBusFixture.ConfigSettings.ServiceBusConnectionString, ServiceBusFixture.ConfigSettings.AzureSubscriptionId))
+        {
+
+            var sendTasks = new List<Task>();
+            for (var i = 0; i < 2; i++)
+            {
+                var sendTask = msn.Send(new TestMessage());
+                sendTasks.Add(sendTask);
+            }
+
+            var messageCount = 0;
+
+            msn.Receive<TestMessage>(
+                async m =>
+                {
+                    try
+                    {
+                        await msn.Lock(m);
+                        await Task.Delay(TimeSpan.FromSeconds(5), ts.Token);
+                        await msn.Complete(m);
+                        messageCount++;
+                        ts.Cancel(); // kill switch
+                    }
+                    catch { }
+                });
+            
+            await sendTasks.WhenAll();
+
+            try
+            {
+                await Task.Delay(TimeSpan.FromMinutes(2), ts.Token);
+            }
+            catch (TaskCanceledException) { /* soak the kill switch */ }
+
+            messageCount.Should().Be(2);
             ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage).GetEntityName()]).Messages.Should().BeEmpty();
             ((QueueAdapter<TestMessage>)msn.ServiceBusAdapters[typeof(TestMessage).GetEntityName()]).LockTimers.Should().BeEmpty();
         }

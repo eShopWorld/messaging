@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     
-    <Version>2.1.7</Version>
-    <PackageReleaseNotes>Fix crash on message lock</PackageReleaseNotes>
+    <Version>2.1.8</Version>
+    <PackageReleaseNotes>Update Nuget packages</PackageReleaseNotes>
 
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>
@@ -31,12 +31,12 @@
   <ItemGroup>
     <PackageReference Include="eshopworld.core" Version="4.2.1" />
     <PackageReference Include="jetbrains.annotations" Version="2020.1.0" />
-    <PackageReference Include="Microsoft.Azure.Management.Fluent" Version="1.34.0" />
-    <PackageReference Include="microsoft.azure.servicebus" Version="4.1.4" />
-    <PackageReference Include="Microsoft.Azure.Services.AppAuthentication" Version="1.5.0" />
-    <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.0.0" />
-    <PackageReference Include="polly" Version="7.2.1" />
-    <PackageReference Include="system.reactive" Version="4.4.1" />
+    <PackageReference Include="microsoft.azure.servicebus" Version="5.1.3" />
+    <PackageReference Include="system.reactive" Version="5.0.0" />
+    <PackageReference Include="Microsoft.Azure.Management.Fluent" Version="1.37.1" />
+    <PackageReference Include="Microsoft.Azure.Services.AppAuthentication" Version="1.6.1" />
+    <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.1.0" />
+    <PackageReference Include="polly" Version="7.2.2" />
   </ItemGroup>
 
 </Project>
